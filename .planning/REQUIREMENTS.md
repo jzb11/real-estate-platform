@@ -64,10 +64,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Authentication & User Management
 
-- [ ] **AU-01**: User can create account with email/password
-- [ ] **AU-02**: User session persists across browser refresh
-- [ ] **AU-03**: User can reset password via email link
-- [ ] **AU-04**: User can log out from any page
+- [ ] **AUTH-01**: User can create account with email/password
+- [ ] **AUTH-02**: User session persists across browser refresh
+- [ ] **AUTH-03**: User can reset password via email link
+- [ ] **AUTH-04**: User can log out from any page
 
 ## v2 Requirements
 
@@ -167,5 +167,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Unmapped: 0 ✓
 
 ---
+
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after initial definition*
+*Last updated: 2026-02-25 after roadmap creation*
