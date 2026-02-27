@@ -86,6 +86,14 @@ describe('evaluateOperator', () => {
     it('returns false when array does not contain the value', () => {
       expect(evaluateOperator(['preforeclosure'], 'CONTAINS', 'foreclosure')).toBe(false);
     });
+
+    it('returns false when fieldValue is not an array or object (e.g. string)', () => {
+      expect(evaluateOperator('foreclosure', 'CONTAINS', 'foreclosure')).toBe(false);
+    });
+
+    it('returns false when fieldValue is null', () => {
+      expect(evaluateOperator(null, 'CONTAINS', 'foreclosure')).toBe(false);
+    });
   });
 
   describe('RANGE (value within min/max bounds)', () => {
@@ -133,6 +141,14 @@ describe('evaluateOperator', () => {
 
     it('returns false when array contains the value', () => {
       expect(evaluateOperator(['foreclosure', 'preforeclosure'], 'NOT_CONTAINS', 'foreclosure')).toBe(false);
+    });
+
+    it('returns false when fieldValue is not an array or object (e.g. number)', () => {
+      expect(evaluateOperator(42, 'NOT_CONTAINS', 'foreclosure')).toBe(false);
+    });
+
+    it('returns false when fieldValue is null', () => {
+      expect(evaluateOperator(null, 'NOT_CONTAINS', 'foreclosure')).toBe(false);
     });
   });
 
