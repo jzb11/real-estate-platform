@@ -210,5 +210,17 @@ None currently. Phase 1 Plan 01 complete; ready for Plan 02.
     - Rationale: New users need working rules immediately; seeding on first read avoids a separate onboarding step
     - Impact: Users are immediately productive without any rule configuration
 
+11. **422 for invalid state machine transitions (not 400)** — from 01-04 execution
+    - Rationale: Request is well-formed JSON; the business rule (state machine) rejects it — 422 Unprocessable Entity is semantically correct
+    - Impact: POST /api/deals/[id]/transition returns 422 with valid next states listed in error message
+
+12. **404 for cross-user deal access (not 403)** — from 01-04 execution
+    - Rationale: Returning 403 would confirm the deal exists (information leak); 404 prevents existence probing
+    - Impact: All deal endpoints return 404 for unauthorized deal IDs
+
+13. **Zod 4: z.record() requires two arguments (key type + value type)** — from 01-04 execution
+    - Rationale: Zod 4 changed z.record() API; single-arg form fails TypeScript
+    - Impact: Use `z.record(z.string(), valueType)` everywhere in this codebase
+
 *Last session: 2026-02-27*
-*Stopped at: Completed 01-03 Qualification Rules Engine (TDD, 51 tests, rules CRUD, qualify endpoint)*
+*Stopped at: Completed 01-04 Deal CRM Backend + State Machine (state machine, 5 API endpoints, DealHistory audit trail)*
