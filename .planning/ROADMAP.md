@@ -2,7 +2,7 @@
 
 **Project:** Real Estate Deal Sourcing & Wholesale Automation
 **Date Created:** 2026-02-25
-**Status:** Draft
+**Status:** Phase 1 Planned
 
 ---
 
@@ -40,7 +40,16 @@ This roadmap delivers a deal automation platform that moves investors from manua
 5. **User can access educational content and understand the platform** — Knowledge base available with guides on deal analysis and creative finance structures, can search for topics, help contextually available on dashboard
 6. **System is compliant and audit-ready** — Consent captured before any contact, compliance logs track all actions, system flags TCPA violations, deal analysis data tagged with freshness date, user can view audit trail
 
-**Plans:** TBD
+**Plans:** 7 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Bootstrap Next.js 15 + Clerk auth + full Prisma database schema
+- [ ] 01-02-PLAN.md — PropStream CSV import, property search with filters, saved filter criteria
+- [ ] 01-03-PLAN.md — Deal qualification rules engine (TDD: operators, scoring, MAO calculation)
+- [ ] 01-04-PLAN.md — Deal CRM backend: state machine, CRUD API, pipeline stage transitions
+- [ ] 01-05-PLAN.md — TCPA compliance infrastructure: contact logging, consent, DNC, audit trail
+- [ ] 01-06-PLAN.md — Frontend UI: Kanban pipeline, deal detail with MAO, CSV import page
+- [ ] 01-07-PLAN.md — Knowledge base: seeded articles, search API, contextual help integration
 
 ---
 
@@ -69,7 +78,7 @@ This roadmap delivers a deal automation platform that moves investors from manua
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Deal Sourcing & CRM | 0/TBD | Not started | — |
+| 1. Core Deal Sourcing & CRM | 0/7 | Planned | — |
 | 2. Intelligent Offer Automation & Creative Finance | 0/TBD | Not started | — |
 
 ---
@@ -128,4 +137,4 @@ This roadmap delivers a deal automation platform that moves investors from manua
 
 ---
 
-**Next Step:** Await approval for Phase 1 planning via `/gsd:plan-phase 1`
+**Next Step:** Execute Phase 1 via `/gsd:execute-phase 01-core-deal-sourcing-crm`
