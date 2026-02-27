@@ -16,6 +16,7 @@
     "@neondatabase/serverless": "^1.0.2",
     "@prisma/adapter-neon": "^7.4.1",
     "@prisma/client": "^7.4.1",
+    "@sendgrid/mail": "^8.1.6",
     "@types/lodash": "^4.17.24",
     "@types/papaparse": "^5.5.2",
     "lodash": "^4.17.23",
