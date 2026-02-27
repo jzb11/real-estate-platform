@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DealStatus {
+  SOURCED
+  ANALYZING
+  QUALIFIED
+  REJECTED
+  UNDER_CONTRACT
+  CLOSED
+}
+
+enum ContactMethod {
+  EMAIL
+  CALL
+  SMS
+  LETTER
+}
+
+enum ConsentStatus {
+  NO_CONSENT_OBTAINED
+  EXPRESS_WRITTEN_CONSENT
+  PRIOR_EXPRESS_CONSENT
+  DO_NOT_CALL
+}
+
+enum RuleType {
+  FILTER
+  SCORE_COMPONENT
+}
+
+enum Operator {
+  GT
+  LT
+  EQ
+  IN
+  CONTAINS
+  RANGE
+  NOT_CONTAINS
+}
+
+enum KbCategory {
+  ANALYSIS
+  COMPLIANCE
+  FORMULAS
+  MARKET_TRENDS
+  CREATIVE_FINANCE
+}
+
+model User {
+  id        String    @id @default(uuid())
+  clerkId   String    @unique
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  deals              Deal[]
+  qualificationRules QualificationRule[]
+  contactLogs        ContactLog[]
+  kbAccessLogs       KbAccessLog[]
+  dealHistories      DealHistory[]
+}
+
+model Property {
+  id               String    @id @default(uuid())
+  externalId       String    @unique
+  address          String
+  city             String
+  state            String
+  zip              String
+  latitude         Float?
+  longitude        Float?
+  propertyType     String?
+  estimatedValue   Float?
+  lastSalePrice    Float?
+  lastSaleDate     DateTime?
+  taxAssessedValue Float?
+  ownershipName    String?
+  ownershipPhone   String? // encrypted at app layer
+  distressSignals  Json      @default("{}")
+  dataSource       String    @default("CSV")
+  dataFreshnessDate DateTime
+  rawData          Json      @default("{}")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  deals       Deal[]
+  contactLogs ContactLog[]
+
+  @@index([address, city, state])
+  @@index([dataFreshnessDate])
+  @@index([externalId])
+}
+
+model Deal {
+  id                 String     @id @default(uuid())
+  propertyId         String
+  userId             String
+  title              String
+  status             DealStatus @default(SOURCED)
+  stageHistory       Json       @default("[]")
+  customFields       Json       @default("{}")
+  qualificationScore Int        @default(0)
+  estimatedProfit    Float?
+  notes              String?
+  pipelinePosition   Int        @default(0)
+  closedDate         DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  property  Property            @relation(fields: [propertyId], references: [id])
+  user      User                @relation(fields: [userId], references: [id])
+  history   DealHistory[]
+  ruleEvals RuleEvaluationLog[]
+
+  @@index([userId, status])
+  @@index([userId, pipelinePosition])
+}
+
+model DealHistory {
+  id           String   @id @default(uuid())
+  dealId       String
+  userId       String
+  fieldChanged String
+  oldValue     String?
+  newValue     String?
+  createdAt    DateTime @default(now()) // IMMUTABLE — no updatedAt
+
+  deal Deal @relation(fields: [dealId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([dealId, createdAt])
+}
+
+model ContactLog {
+  id                  String        @id @default(uuid())
+  propertyId          String
+  userId              String
+  ownerPhoneEncrypted String?
+  contactTimestamp    DateTime
+  contactMethod       ContactMethod
+  consentStatus       ConsentStatus
+  consentTimestamp    DateTime?
+  consentMedium       String?
+  consentDetails      Json          @default("{}")
+  optOutRequestedAt   DateTime?
+  optOutProcessedAt   DateTime?
+  callRecordingUrl    String?
+  notes               String?
+  createdAt           DateTime      @default(now()) // IMMUTABLE — no updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([propertyId])
+  @@index([userId, contactTimestamp])
+}
+
+model ConsentRecord {
+  id                      String    @id @default(uuid())
+  ownerPhoneEncrypted     String
+  originalConsentTimestamp DateTime
+  originalConsentMethod   String
+  disclosuresAcknowledged Json      @default("[]")
+  revocationTimestamp     DateTime?
+  revocationMethod        String?
+  revocationProcessedDate DateTime?
+  complianceStatus        String    @default("COMPLIANT")
+  mustRetainUntil         DateTime
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([ownerPhoneEncrypted])
+}
+
+model DoNotCallEntry {
+  id             String    @id @default(uuid())
+  phoneEncrypted String    @unique
+  addedReason    String
+  expiryDate     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([phoneEncrypted])
+}
+
+model QualificationRule {
+  id          String   @id @default(uuid())
+  userId      String? // null = system default rule
+  name        String
+  description String?
+  ruleType    RuleType
+  fieldName   String
+  operator    Operator
+  value       Json
+  weight      Int      @default(0)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User?               @relation(fields: [userId], references: [id])
+  evaluations RuleEvaluationLog[]
+
+  @@index([userId, enabled])
+}
+
+model RuleEvaluationLog {
+  id               String   @id @default(uuid())
+  dealId           String
+  ruleId           String
+  evaluationResult String
+  scoreAwarded     Int      @default(0)
+  evaluatedAt      DateTime @default(now())
+
+  deal Deal              @relation(fields: [dealId], references: [id])
+  rule QualificationRule @relation(fields: [ruleId], references: [id])
+
+  @@index([dealId])
+}
+
+model KbArticle {
+  id          String     @id @default(uuid())
+  title       String
+  slug        String     @unique
+  category    KbCategory
+  content     String
+  isPublished Boolean    @default(false)
+  viewCount   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  accessLogs KbAccessLog[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([isPublished])
+}
+
+model KbAccessLog {
+  id        String   @id @default(uuid())
+  articleId String
+  userId    String
+  viewedAt  DateTime @default(now())
+
+  article KbArticle @relation(fields: [articleId], references: [id])
+  user    User      @relation(fields: [userId], references: [id])
+}
