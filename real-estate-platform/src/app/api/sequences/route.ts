@@ -18,12 +18,6 @@ const createSequenceSchema = z.object({
   steps: z.array(stepSchema).min(1, 'Sequence must have at least one step'),
 });
 
-const updateSequenceSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).optional(),
-  steps: z.array(stepSchema).min(1).optional(),
-  enabled: z.boolean().optional(),
-});
 
 /**
  * GET /api/sequences
