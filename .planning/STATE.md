@@ -1,7 +1,7 @@
 # Project State: Real Estate Automation Platform
 
 **Last Updated:** 2026-02-27
-**Current Phase:** Phase 1 Execution (01-01 complete, 01-02 next)
+**Current Phase:** Phase 1 Execution (01-01, 01-03, 01-04 complete; 01-02, 01-05, 01-06, 01-07 in progress/pending)
 
 ---
 
@@ -25,8 +25,11 @@
 
 **Status:**
 - Phase 1 Plan 01 (Bootstrap) — COMPLETE
-- Phase 1 Plan 02 (CSV Import) — next
-- Phase 1 Plans 03-07 — pending
+- Phase 1 Plan 02 (CSV Import) — in progress (partial execution by another agent)
+- Phase 1 Plan 03 (Qualification Rules Engine) — COMPLETE
+- Phase 1 Plan 04 (Deal CRM Backend + State Machine) — COMPLETE
+- Phase 1 Plan 05 (TCPA Compliance) — in progress (partial execution by another agent)
+- Phase 1 Plans 06-07 — pending
 
 **Progress:**
 ```
@@ -49,12 +52,12 @@ Phase 1 Planning: ████████████████████ 1
 ├─ Task decomposition: ✓ (7 plans)
 └─ File initialization: ✓
 
-Phase 1 Execution: ███░░░░░░░░░░░░░░░░░ 14% (1/7 plans)
+Phase 1 Execution: █████████░░░░░░░░░░░ 43% (3/7 plans complete)
 ├─ 01-01 Bootstrap (Next.js + Clerk + DB Schema): ✓
-├─ 01-02 CSV Import & Property Ingestion: (next)
-├─ 01-03 CRM Pipeline: (upcoming)
-├─ 01-04 Qualification Rules Engine: (upcoming)
-├─ 01-05 TCPA Compliance & Contact Logging: (upcoming)
+├─ 01-02 CSV Import & Property Ingestion: (partial - other agent)
+├─ 01-03 Qualification Rules Engine: ✓
+├─ 01-04 Deal CRM Backend + State Machine: ✓
+├─ 01-05 TCPA Compliance & Contact Logging: (partial - other agent)
 ├─ 01-06 Knowledge Base: (upcoming)
 └─ 01-07 Dashboard & Analytics: (upcoming)
 
@@ -90,6 +93,20 @@ Phase 2 Planning: ○○○○○○○○○○ 0%
 - Tasks: 2/2 completed
 - Files created: 15
 - Deviations: 3 auto-fixed (all Prisma 7 breaking changes)
+
+**Plan 01-03 Execution:**
+- Duration: ~5 min
+- Tasks: 8/8 completed
+- Files created: 9, modified: 1
+- Tests: 51 passing (35 operator + 16 engine)
+- Coverage: engine.ts 100%, operators.ts 100% lines
+- Deviations: none (plan executed exactly)
+
+**Plan 01-04 Execution:**
+- Duration: 3 min
+- Tasks: 2/2 completed
+- Files created: 5
+- Deviations: 1 auto-fixed (Zod 4 z.record() requires 2 arguments)
 
 ---
 
@@ -181,5 +198,17 @@ None currently. Phase 1 Plan 01 complete; ready for Plan 02.
 
 ---
 
+8. **evaluateDeal() is pure** — no DB calls in engine; caller persists RuleEvaluationLog entries
+   - Rationale: TDD requires testability in isolation; engine must be deterministic without a database
+   - Impact: qualify endpoint handles all DB writes; engine stays pure and fully tested
+
+9. **lodash.get for nested field access** — dot notation (e.g., `rawData.mortgageRate`)
+   - Rationale: Rules can target nested JSON fields (rawData, distressSignals); `_.get` handles this cleanly
+   - Impact: Rules can target any depth of nested property data
+
+10. **3 default system rules seeded on first GET /api/rules** — MinARV (FILTER), Foreclosure Signal (+25), Days on Market (+20)
+    - Rationale: New users need working rules immediately; seeding on first read avoids a separate onboarding step
+    - Impact: Users are immediately productive without any rule configuration
+
 *Last session: 2026-02-27*
-*Stopped at: Completed 01-01 Bootstrap plan (Next.js + Clerk + 11-table schema)*
+*Stopped at: Completed 01-03 Qualification Rules Engine (TDD, 51 tests, rules CRUD, qualify endpoint)*
