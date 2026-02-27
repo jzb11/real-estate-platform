@@ -2,7 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
-import { updateSequenceSchema } from '@/app/api/sequences/route';
+
+const stepSchema = z.object({
+  type: z.enum(['EMAIL', 'SMS', 'WAIT']),
+  delayDays: z.number().int().positive().optional(),
+  subject: z.string().max(200).optional(),
+  htmlContent: z.string().optional(),
+  plainText: z.string().optional(),
+  phoneNumber: z.string().optional(),
+});
+
+const updateSequenceSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  steps: z.array(stepSchema).min(1).optional(),
+  enabled: z.boolean().optional(),
+});
 
 type RouteContext = { params: Promise<{ id: string }> };
 

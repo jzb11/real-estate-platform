@@ -142,4 +142,3 @@ export async function DELETE() {
   );
 }
 
-export { updateSequenceSchema };
