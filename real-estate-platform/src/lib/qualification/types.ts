@@ -21,6 +21,8 @@ export interface QualificationRule {
   operator: Operator;
   value: unknown;
   weight: number;
+  /** Creative finance deal type — null means this is a standard FILTER/SCORE rule */
+  ruleSubtype?: string | null;
   enabled: boolean;
 }
 
@@ -53,6 +55,8 @@ export interface EvaluationResult {
   status: 'QUALIFIED' | 'ANALYZING' | 'REJECTED';
   qualificationScore: number;
   ruleBreakdown: RuleBreakdownEntry[];
+  /** Creative finance deal types matched (null if no CF rules matched) */
+  creativeFinanceTypes: string[] | null;
 }
 
 // Input for MAO calculation

@@ -55,7 +55,7 @@ export async function POST(
     orderBy: [{ ruleType: 'asc' }, { createdAt: 'asc' }],
   });
 
-  // Map Prisma rules to engine types
+  // Map Prisma rules to engine types (include ruleSubtype for CF rule detection)
   const rules: QualificationRule[] = dbRules.map((r) => ({
     id: r.id,
     name: r.name,
@@ -65,6 +65,7 @@ export async function POST(
     operator: r.operator as Operator,
     value: r.value,
     weight: r.weight,
+    ruleSubtype: r.ruleSubtype,
     enabled: r.enabled,
   }));
 
@@ -136,5 +137,6 @@ export async function POST(
     status: newStatus,
     qualificationScore: evalResult.qualificationScore,
     ruleBreakdown: evalResult.ruleBreakdown,
+    creativeFinanceTypes: evalResult.creativeFinanceTypes,
   });
 }
