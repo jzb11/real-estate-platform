@@ -71,6 +71,7 @@ model User {
   followUpSequences    FollowUpSequence[]
   followUpScheduled    FollowUpScheduled[]
   deliverabilityAlerts DeliverabilityAlert[]
+  skipTraceRequests    SkipTraceRequest[]
 }
 
 model Property {
@@ -89,6 +90,8 @@ model Property {
   taxAssessedValue Float?
   ownershipName    String?
   ownershipPhone   String? // encrypted at app layer (AES-256-GCM)
+  ownershipEmail   String? // contact email from skip-trace or CSV (stored as plain text — no PII classification)
+  skipTraced       Boolean   @default(false) // True after at least one completed skip-trace
   equityPercent    Float? // Equity percentage 0-100 — typed column for efficient filtering
   debtOwed         Float? // Total open liens in dollars
   interestRate     Float? // Current mortgage interest rate
@@ -100,8 +103,9 @@ model Property {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  deals       Deal[]
-  contactLogs ContactLog[]
+  deals            Deal[]
+  contactLogs      ContactLog[]
+  skipTraceRequests SkipTraceRequest[]
 
   @@index([address, city, state])
   @@index([dataFreshnessDate])
@@ -109,6 +113,7 @@ model Property {
   @@index([equityPercent])
   @@index([debtOwed])
   @@index([daysOnMarket])
+  @@index([skipTraced])
 }
 
 model Deal {
@@ -206,8 +211,19 @@ model DoNotCallEntry {
   @@index([phoneEncrypted])
 }
 
+enum CreativeFinanceType {
+  SUBJECT_TO
+  SELLER_FINANCE
+  OWNER_OCCUPIED_VACATED
+  LEASE_OPTION
+  BRRRR
+  WHOLESALE
+  LAND_CONTRACT
+  RENT_TO_OWN
+}
+
 model QualificationRule {
-  id          String   @id @default(uuid())
+  id          String               @id @default(uuid())
   userId      String? // null = system default rule
   name        String
   description String?
@@ -215,15 +231,17 @@ model QualificationRule {
   fieldName   String
   operator    Operator
   value       Json
-  weight      Int      @default(0)
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  weight      Int                  @default(0)
+  ruleSubtype CreativeFinanceType? // identifies CF rule type; null = standard rule
+  enabled     Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   user        User?               @relation(fields: [userId], references: [id])
   evaluations RuleEvaluationLog[]
 
   @@index([userId, enabled])
+  @@index([userId, enabled, ruleSubtype])
 }
 
 model RuleEvaluationLog {
@@ -414,4 +432,37 @@ model DeliverabilityAlert {
 
   @@index([userId, alertType, createdAt])
   @@index([userId, acknowledged])
+}
+
+enum SkipTraceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NOT_FOUND
+}
+
+// Tracks skip-trace lookup requests against REISkip API.
+// One record per property per enrichment request.
+// Stores raw REISkip response for audit; enriched phone/email written back to Property on COMPLETED.
+model SkipTraceRequest {
+  id             String          @id @default(uuid())
+  propertyId     String
+  userId         String
+  status         SkipTraceStatus @default(PENDING)
+  requestedAt    DateTime        @default(now())
+  completedAt    DateTime?
+  phoneFound     Boolean         @default(false) // True when REISkip returned at least one phone
+  emailFound     Boolean         @default(false) // True when REISkip returned at least one email
+  rawResponse    Json?           // Full REISkip API response (audit trail, never discarded)
+  errorMessage   String?         // Set on FAILED status
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([userId, status])
+  @@index([requestedAt])
 }
