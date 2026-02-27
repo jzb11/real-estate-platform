@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { OfferedDeal } from '@prisma/client';
 import { OfferCard } from '@/components/ui/OfferCard';
@@ -12,7 +12,7 @@ type OfferWithDeal = OfferedDeal & {
   };
 };
 
-export default function TrackingPage() {
+function TrackingContent() {
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('success') === 'true';
 
@@ -129,5 +129,13 @@ export default function TrackingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={<div className="p-4">Loading...</div>}>
+      <TrackingContent />
+    </Suspense>
   );
 }
