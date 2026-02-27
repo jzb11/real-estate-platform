@@ -1,18 +1,30 @@
 import crypto from 'crypto';
 
-// Validate ENCRYPTION_KEY at module load time — fail fast on misconfiguration
-// Key must be a 64-character hex string (32 bytes for AES-256)
-if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length !== 64) {
-  throw new Error(
-    'ENCRYPTION_KEY must be a 64-char hex string (32 bytes). ' +
-      'Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
-  );
+// Lazy-initialize keys on first use (not at module load) to avoid build-time failures.
+// Next.js collects page data during build where env vars may not be available.
+let _encryptionKey: Buffer | null = null;
+let _hmacKey: Buffer | null = null;
+
+function getEncryptionKey(): Buffer {
+  if (!_encryptionKey) {
+    if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length !== 64) {
+      throw new Error(
+        'ENCRYPTION_KEY must be a 64-char hex string (32 bytes). ' +
+          'Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+      );
+    }
+    _encryptionKey = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+    _hmacKey = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+  }
+  return _encryptionKey;
 }
 
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); // 32 bytes for AES-256-GCM
-// NOTE: We reuse the same key for HMAC but in a completely separate operation.
-// The HMAC output is one-way and cannot be reversed to obtain the key or plaintext.
-const HMAC_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+function getHmacKey(): Buffer {
+  if (!_hmacKey) {
+    getEncryptionKey(); // initializes both
+  }
+  return _hmacKey!;
+}
 
 /**
  * Encrypts a phone number using AES-256-GCM.
@@ -26,7 +38,7 @@ const HMAC_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 export function encryptPhone(phone: string): string {
   const normalized = phone.replace(/\D/g, ''); // Strip non-digits
   const iv = crypto.randomBytes(12); // 96-bit IV for GCM mode
-  const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getEncryptionKey(), iv);
   const encrypted = Buffer.concat([cipher.update(normalized, 'utf8'), cipher.final()]);
   const authTag = cipher.getAuthTag();
   return Buffer.from(
@@ -50,7 +62,7 @@ export function decryptPhone(encryptedPhone: string): string {
   ) as { iv: string; authTag: string; ciphertext: string };
   const decipher = crypto.createDecipheriv(
     'aes-256-gcm',
-    ENCRYPTION_KEY,
+    getEncryptionKey(),
     Buffer.from(iv, 'hex')
   );
   decipher.setAuthTag(Buffer.from(authTag, 'hex'));
@@ -71,5 +83,5 @@ export function decryptPhone(encryptedPhone: string): string {
  */
 export function hashPhoneForLookup(phone: string): string {
   const normalized = phone.replace(/\D/g, '');
-  return crypto.createHmac('sha256', HMAC_KEY).update(normalized).digest('hex');
+  return crypto.createHmac('sha256', getHmacKey()).update(normalized).digest('hex');
 }
