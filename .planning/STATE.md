@@ -1,7 +1,7 @@
 # Project State: Real Estate Automation Platform
 
 **Last Updated:** 2026-02-27
-**Current Phase:** Phase 1 Execution (01-01, 01-03, 01-04 complete; 01-02, 01-05, 01-06, 01-07 in progress/pending)
+**Current Phase:** Phase 2 Execution (02-01 complete; 02-02 through 02-07 pending)
 
 ---
 
@@ -21,15 +21,17 @@
 
 ## Current Position
 
-**Roadmap Phase:** Phase 1 Execution in progress
+**Roadmap Phase:** Phase 2 Execution in progress
 
 **Status:**
 - Phase 1 Plan 01 (Bootstrap) — COMPLETE
-- Phase 1 Plan 02 (CSV Import) — in progress (partial execution by another agent)
+- Phase 1 Plan 02 (CSV Import) — COMPLETE
 - Phase 1 Plan 03 (Qualification Rules Engine) — COMPLETE
 - Phase 1 Plan 04 (Deal CRM Backend + State Machine) — COMPLETE
-- Phase 1 Plan 05 (TCPA Compliance) — in progress (partial execution by another agent)
+- Phase 1 Plan 05 (TCPA Compliance) — COMPLETE
 - Phase 1 Plans 06-07 — pending
+- Phase 2 Plan 01 (Offer Generation + SendGrid) — COMPLETE
+- Phase 2 Plans 02-07 — pending
 
 **Progress:**
 ```
@@ -52,16 +54,24 @@ Phase 1 Planning: ████████████████████ 1
 ├─ Task decomposition: ✓ (7 plans)
 └─ File initialization: ✓
 
-Phase 1 Execution: █████████░░░░░░░░░░░ 43% (3/7 plans complete)
+Phase 1 Execution: ██████████████░░░░░░ 71% (5/7 plans complete)
 ├─ 01-01 Bootstrap (Next.js + Clerk + DB Schema): ✓
-├─ 01-02 CSV Import & Property Ingestion: (partial - other agent)
+├─ 01-02 CSV Import & Property Ingestion: ✓
 ├─ 01-03 Qualification Rules Engine: ✓
 ├─ 01-04 Deal CRM Backend + State Machine: ✓
-├─ 01-05 TCPA Compliance & Contact Logging: (partial - other agent)
-├─ 01-06 Knowledge Base: (upcoming)
-└─ 01-07 Dashboard & Analytics: (upcoming)
+├─ 01-05 TCPA Compliance & Contact Logging: ✓
+├─ 01-06 Knowledge Base: (pending)
+└─ 01-07 Dashboard & Analytics: (pending)
 
-Phase 2 Planning: ○○○○○○○○○○ 0%
+Phase 2 Planning: ████████████████████ 100%
+Phase 2 Execution: ███░░░░░░░░░░░░░░░░░ 14% (1/7 plans complete)
+├─ 02-01 Offer Generation + SendGrid Setup: ✓
+├─ 02-02 Follow-Up Automation Backend: (pending)
+├─ 02-03 Offer Send + Bulk Send API: (pending)
+├─ 02-04 Creative Finance Scoring: (pending)
+├─ 02-05 Contact Enrichment + Skip-Trace: (pending)
+├─ 02-06 Email Deliverability Monitoring: (pending)
+└─ 02-07 Frontend UI: (pending)
 ```
 
 ---
@@ -71,7 +81,7 @@ Phase 2 Planning: ○○○○○○○○○○ 0%
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
 | 1 | Core Deal Sourcing & CRM (foundation, compliance) | 26 | In progress (1/7 plans) |
-| 2 | Intelligent Offer Automation & Creative Finance | 14 | Not started |
+| 2 | Intelligent Offer Automation & Creative Finance | 14 | In progress (1/7 plans) |
 
 ---
 
@@ -107,6 +117,20 @@ Phase 2 Planning: ○○○○○○○○○○ 0%
 - Tasks: 2/2 completed
 - Files created: 5
 - Deviations: 1 auto-fixed (Zod 4 z.record() requires 2 arguments)
+
+**Plan 01-05 Execution:**
+- Duration: ~6 min
+- Tasks: 2/2 completed
+- Files created: 9 (7 source + 2 migration/schema)
+- Files modified: 1 (schema.prisma — added ConsentRecord.phoneHash)
+- Deviations: 3 auto-fixed (Prisma Json type cast, missing phoneHash column, z.record() fix)
+
+**Plan 02-01 Execution:**
+- Duration: 6 min
+- Tasks: 3/3 completed
+- Files created: 7 (5 source + 1 migration + 1 summary)
+- Files modified: 2 (schema.prisma, .env.example)
+- Deviations: 4 auto-fixed (Clerk clerkId pattern, stale Prisma client, calculateMAO return type, Prisma.InputJsonValue cast)
 
 ---
 
@@ -222,5 +246,21 @@ None currently. Phase 1 Plan 01 complete; ready for Plan 02.
     - Rationale: Zod 4 changed z.record() API; single-arg form fails TypeScript
     - Impact: Use `z.record(z.string(), valueType)` everywhere in this codebase
 
+14. **Lazy SendGrid initialization** — from 02-01 execution
+    - Rationale: sgMail.setApiKey() called at import time causes build failure when SENDGRID_API_KEY not set in CI; lazy init solves this
+    - Impact: `createSendGridClient()` and `sendOfferEmail()` call `ensureInitialized()` on first use; no env var required at build time
+
+15. **calculateMAO() returns MAOResult object** — from 02-01 execution
+    - Rationale: Engine returns `{ mao: number, formula: string }` not a plain number; both values are useful for display/audit
+    - Impact: Callers must use `maoResult.mao` for numeric value; offer draft response also exposes `maoFormula`
+
+16. **Prisma generate required after schema modifications** — from 02-01 execution
+    - Rationale: Schema was updated but client was stale; new models/enums not reflected until `npx prisma generate` is run
+    - Impact: Any plan modifying schema.prisma must include `prisma generate` step before TypeScript check
+
+17. **Email lib directory pattern** — from 02-01 execution
+    - Rationale: All email concerns colocated in src/lib/email/ (types.ts, sendgrid.ts, offerTemplate.ts)
+    - Impact: Future email-related libs (follow-up templates, SMS) should extend src/lib/email/
+
 *Last session: 2026-02-27*
-*Stopped at: Completed 01-04 Deal CRM Backend + State Machine (state machine, 5 API endpoints, DealHistory audit trail)*
+*Stopped at: Completed 02-01 Offer Generation Template + SendGrid Setup (email infrastructure, webhook handler, offer draft API)*
