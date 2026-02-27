@@ -66,6 +66,7 @@ model User {
   contactLogs        ContactLog[]
   kbAccessLogs       KbAccessLog[]
   dealHistories      DealHistory[]
+  savedSearchFilters SavedSearchFilter[]
 }
 
 model Property {
@@ -83,7 +84,11 @@ model Property {
   lastSaleDate     DateTime?
   taxAssessedValue Float?
   ownershipName    String?
-  ownershipPhone   String? // encrypted at app layer
+  ownershipPhone   String? // encrypted at app layer (AES-256-GCM)
+  equityPercent    Float? // Equity percentage 0-100 — typed column for efficient filtering
+  debtOwed         Float? // Total open liens in dollars
+  interestRate     Float? // Current mortgage interest rate
+  daysOnMarket     Int? // Days property has been listed
   distressSignals  Json      @default("{}")
   dataSource       String    @default("CSV")
   dataFreshnessDate DateTime
@@ -97,6 +102,9 @@ model Property {
   @@index([address, city, state])
   @@index([dataFreshnessDate])
   @@index([externalId])
+  @@index([equityPercent])
+  @@index([debtOwed])
+  @@index([daysOnMarket])
 }
 
 model Deal {
@@ -165,7 +173,8 @@ model ContactLog {
 
 model ConsentRecord {
   id                      String    @id @default(uuid())
-  ownerPhoneEncrypted     String
+  ownerPhoneEncrypted     String    // AES-256-GCM ciphertext (reversible, for display)
+  phoneHash               String    // HMAC-SHA256 hash (one-way, for fast lookup without decryption)
   originalConsentTimestamp DateTime
   originalConsentMethod   String
   disclosuresAcknowledged Json      @default("[]")
@@ -178,6 +187,7 @@ model ConsentRecord {
   updatedAt               DateTime  @updatedAt
 
   @@index([ownerPhoneEncrypted])
+  @@index([phoneHash]) // Fast opt-out processing: find consent records by phone hash
 }
 
 model DoNotCallEntry {
@@ -250,4 +260,17 @@ model KbAccessLog {
 
   article KbArticle @relation(fields: [articleId], references: [id])
   user    User      @relation(fields: [userId], references: [id])
+}
+
+model SavedSearchFilter {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  filters   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
