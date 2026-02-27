@@ -31,7 +31,8 @@
 - Phase 1 Plan 05 (TCPA Compliance) — COMPLETE
 - Phase 1 Plans 06-07 — pending
 - Phase 2 Plan 01 (Offer Generation + SendGrid) — COMPLETE
-- Phase 2 Plans 02-07 — pending
+- Phase 2 Plan 02 (Follow-Up Automation Backend) — COMPLETE
+- Phase 2 Plans 03-07 — pending
 
 **Progress:**
 ```
@@ -64,9 +65,9 @@ Phase 1 Execution: ██████████████░░░░░░ 
 └─ 01-07 Dashboard & Analytics: (pending)
 
 Phase 2 Planning: ████████████████████ 100%
-Phase 2 Execution: ███░░░░░░░░░░░░░░░░░ 14% (1/7 plans complete)
+Phase 2 Execution: █████░░░░░░░░░░░░░░░ 29% (2/7 plans complete)
 ├─ 02-01 Offer Generation + SendGrid Setup: ✓
-├─ 02-02 Follow-Up Automation Backend: (pending)
+├─ 02-02 Follow-Up Automation Backend: ✓
 ├─ 02-03 Offer Send + Bulk Send API: (pending)
 ├─ 02-04 Creative Finance Scoring: (pending)
 ├─ 02-05 Contact Enrichment + Skip-Trace: (pending)
@@ -131,6 +132,13 @@ Phase 2 Execution: ███░░░░░░░░░░░░░░░░░ 
 - Files created: 7 (5 source + 1 migration + 1 summary)
 - Files modified: 2 (schema.prisma, .env.example)
 - Deviations: 4 auto-fixed (Clerk clerkId pattern, stale Prisma client, calculateMAO return type, Prisma.InputJsonValue cast)
+
+**Plan 02-02 Execution:**
+- Duration: 7 min
+- Tasks: 3/3 completed
+- Files created: 5 (src/lib/queue/bullmq.ts, src/lib/queue/jobs.ts, src/lib/automation/sequenceExecutor.ts, src/app/api/sequences/route.ts, src/app/api/sequences/[id]/route.ts)
+- Files modified: 2 (package.json, package-lock.json)
+- Deviations: 3 auto-fixed (circular import resolved with lazy import(), zod v4 error.issues fix, ownership check added to PATCH)
 
 ---
 
@@ -262,5 +270,17 @@ None currently. Phase 1 Plan 01 complete; ready for Plan 02.
     - Rationale: All email concerns colocated in src/lib/email/ (types.ts, sendgrid.ts, offerTemplate.ts)
     - Impact: Future email-related libs (follow-up templates, SMS) should extend src/lib/email/
 
+18. **Lazy import() in BullMQ worker to break circular dependency** — from 02-02 execution
+    - Rationale: bullmq.ts imports sequenceExecutor.ts, which imports jobs.ts, which imports bullmq.ts — circular
+    - Impact: Worker handler uses `const { executeSequenceStep } = await import(...)` to defer module resolution
+
+19. **BullMQ exponential backoff starts at 1s not 2s** — from 02-02 execution
+    - Rationale: Success criteria specified "1s, 2s, 4s, 8s, 16s"; plan body used 2000ms base incorrectly
+    - Impact: `delay: 1000` (1s base) in BullMQ defaultJobOptions
+
+20. **Pause/resume via FollowUpScheduled.status check at job run time** — from 02-02 execution
+    - Rationale: BullMQ jobs already queued with delay cannot be "unscheduled"; checking status at execution time is the correct pattern
+    - Impact: Paused sequences don't execute even if their job runs (returns { skipped: true }); resume re-enables execution for future jobs
+
 *Last session: 2026-02-27*
-*Stopped at: Completed 02-01 Offer Generation Template + SendGrid Setup (email infrastructure, webhook handler, offer draft API)*
+*Stopped at: Completed 02-02 Follow-Up Automation Backend (BullMQ queue, sequence executor, sequences CRUD API)*
