@@ -61,15 +61,16 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  deals              Deal[]
-  qualificationRules QualificationRule[]
-  contactLogs        ContactLog[]
-  kbAccessLogs       KbAccessLog[]
-  dealHistories      DealHistory[]
-  savedSearchFilters SavedSearchFilter[]
-  offeredDeals       OfferedDeal[]
-  followUpSequences  FollowUpSequence[]
-  followUpScheduled  FollowUpScheduled[]
+  deals                Deal[]
+  qualificationRules   QualificationRule[]
+  contactLogs          ContactLog[]
+  kbAccessLogs         KbAccessLog[]
+  dealHistories        DealHistory[]
+  savedSearchFilters   SavedSearchFilter[]
+  offeredDeals         OfferedDeal[]
+  followUpSequences    FollowUpSequence[]
+  followUpScheduled    FollowUpScheduled[]
+  deliverabilityAlerts DeliverabilityAlert[]
 }
 
 model Property {
@@ -397,4 +398,20 @@ model FollowUpEvent {
 
   @@index([scheduledId, createdAt])
   @@index([eventType])
+}
+
+model DeliverabilityAlert {
+  id           String   @id @default(uuid())
+  userId       String
+  alertType    String   // BOUNCE_RATE_HIGH, COMPLAINT_RATE_HIGH, SENDER_SCORE_LOW
+  message      String
+  metrics      Json     // Snapshot of metrics at alert time
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, alertType, createdAt])
+  @@index([userId, acknowledged])
 }
