@@ -103,6 +103,7 @@ export default function PropertiesPage() {
   const [isSavingFilter, setIsSavingFilter] = useState(false);
   const [saveFilterName, setSaveFilterName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [deletingFilterId, setDeletingFilterId] = useState<string | null>(null);
 
   // Track deal creation per property
   const [creatingDealFor, setCreatingDealFor] = useState<string | null>(null);
@@ -235,6 +236,25 @@ export default function PropertiesPage() {
       alert('Network error — could not save filter');
     } finally {
       setIsSavingFilter(false);
+    }
+  }
+
+  // ── Delete Saved Filter ──────────────────────────────────────────────────────
+
+  async function handleDeleteSavedFilter(filterId: string) {
+    setDeletingFilterId(filterId);
+    try {
+      const res = await fetch(`/api/search-filters/${filterId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSavedFilters((prev) => prev.filter((f) => f.id !== filterId));
+        if (selectedSavedFilter === filterId) {
+          setSelectedSavedFilter('');
+        }
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setDeletingFilterId(null);
     }
   }
 
@@ -403,16 +423,30 @@ export default function PropertiesPage() {
 
             {/* Saved filters */}
             {savedFilters.length > 0 && (
-              <select
-                value={selectedSavedFilter}
-                onChange={(e) => handleLoadSavedFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none bg-white"
-              >
-                <option value="">Load saved filter...</option>
-                {savedFilters.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1">
+                <select
+                  value={selectedSavedFilter}
+                  onChange={(e) => handleLoadSavedFilter(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none bg-white"
+                >
+                  <option value="">Load saved filter...</option>
+                  {savedFilters.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+                {selectedSavedFilter && (
+                  <button
+                    onClick={() => handleDeleteSavedFilter(selectedSavedFilter)}
+                    disabled={deletingFilterId === selectedSavedFilter}
+                    className="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Delete saved filter"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             )}
 
             {/* Save current filter */}

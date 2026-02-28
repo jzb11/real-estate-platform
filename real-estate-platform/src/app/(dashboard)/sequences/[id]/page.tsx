@@ -33,6 +33,8 @@ export default function SequenceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   useEffect(() => {
     fetch(`/api/sequences/${sequenceId}`)
@@ -67,6 +69,43 @@ export default function SequenceDetailPage() {
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Delete this sequence? This cannot be undone.')) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/sequences/${sequenceId}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/sequences');
+        return;
+      }
+      const err = await res.json() as { error?: string };
+      setSaveError(err.error ?? 'Failed to delete');
+    } catch {
+      setSaveError('Network error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleToggle = async () => {
+    if (!sequence) return;
+    setIsToggling(true);
+    try {
+      const res = await fetch(`/api/sequences/${sequenceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !sequence.enabled }),
+      });
+      if (res.ok) {
+        setSequence((prev) => prev ? { ...prev, enabled: !prev.enabled } : prev);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto p-4">
@@ -95,13 +134,22 @@ export default function SequenceDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-medium ${
-              sequence.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+          <button
+            onClick={handleToggle}
+            disabled={isToggling}
+            className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${
+              sequence.enabled ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             {sequence.enabled ? 'Enabled' : 'Disabled'}
-          </span>
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="rounded-lg border border-red-200 px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </button>
         </div>
       </div>
 

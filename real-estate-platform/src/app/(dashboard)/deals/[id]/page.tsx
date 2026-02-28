@@ -129,6 +129,9 @@ export default function DealDetailPage({
   // Stage transition
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Qualification
+  const [isQualifying, setIsQualifying] = useState(false);
+
   // ── Data fetching ────────────────────────────────────────────────────────────
 
   async function fetchDeal() {
@@ -185,6 +188,24 @@ export default function DealDetailPage({
       alert('Network error — could not complete transition');
     } finally {
       setIsTransitioning(false);
+    }
+  }
+
+  async function handleQualify() {
+    if (!deal) return;
+    setIsQualifying(true);
+    try {
+      const res = await fetch(`/api/deals/${id}/qualify`, { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Qualification failed' }));
+        alert(err.error ?? 'Qualification failed');
+        return;
+      }
+      await fetchDeal();
+    } catch {
+      alert('Network error — could not run qualification');
+    } finally {
+      setIsQualifying(false);
     }
   }
 
@@ -599,6 +620,13 @@ export default function DealDetailPage({
                   {deal.status === 'CLOSED' ? 'Deal closed' : deal.status === 'REJECTED' ? 'Deal rejected' : 'No further stages'}
                 </span>
               )}
+              <button
+                onClick={handleQualify}
+                disabled={isQualifying}
+                className="rounded-lg border border-blue-200 bg-blue-50 px-5 py-2.5 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100 disabled:opacity-50 transition-colors"
+              >
+                {isQualifying ? 'Qualifying...' : 'Re-Qualify'}
+              </button>
               {deal.status === 'QUALIFIED' && (
                 <Link
                   href={`/offers/${deal.id}/compose`}
