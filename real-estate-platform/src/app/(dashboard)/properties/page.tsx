@@ -642,7 +642,7 @@ export default function PropertiesPage() {
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Equity %</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Debt Owed</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Days Listed</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Data Age</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Signals / Age</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
@@ -685,13 +685,20 @@ export default function PropertiesPage() {
                           {property.daysOnMarket != null ? property.daysOnMarket : '—'}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span
-                            className={`text-xs font-medium ${
-                              property.isStale ? 'text-red-600' : 'text-gray-500'
-                            }`}
-                          >
-                            {dataAgeText(property.dataFreshnessDate)}
-                          </span>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {Object.entries(property.distressSignals).filter(([, v]) => v === true).length > 0 && (
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700" title={Object.entries(property.distressSignals).filter(([, v]) => v === true).map(([k]) => k).join(', ')}>
+                                {Object.entries(property.distressSignals).filter(([, v]) => v === true).length}
+                              </span>
+                            )}
+                            <span
+                              className={`text-xs font-medium ${
+                                property.isStale ? 'text-red-600' : 'text-gray-500'
+                              }`}
+                            >
+                              {dataAgeText(property.dataFreshnessDate)}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           {dealId ? (

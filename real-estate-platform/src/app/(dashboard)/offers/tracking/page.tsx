@@ -13,6 +13,8 @@ type OfferWithDeal = OfferedDeal & {
   };
 };
 
+const PAGE_SIZE = 20;
+
 function TrackingContent() {
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('success') === 'true';
@@ -20,6 +22,9 @@ function TrackingContent() {
   const [offers, setOffers] = useState<OfferWithDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<'date' | 'status'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const loadOffers = (status?: string) => {
     const qs = status ? `?status=${status}` : '';
@@ -31,8 +36,23 @@ function TrackingContent() {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     loadOffers(statusFilter || undefined);
   }, [statusFilter]);
+
+  // Sort offers
+  const sortedOffers = [...offers].sort((a, b) => {
+    if (sortField === 'status') {
+      const cmp = (a.emailOpenedAt ? 1 : 0) - (b.emailOpenedAt ? 1 : 0);
+      return sortDir === 'asc' ? cmp : -cmp;
+    }
+    const cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  // Paginate
+  const totalPages = Math.max(1, Math.ceil(sortedOffers.length / PAGE_SIZE));
+  const paginatedOffers = sortedOffers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const stats = {
     total: offers.length,
@@ -89,26 +109,48 @@ function TrackingContent() {
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700">Filter by status:</label>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All</option>
-          <option value="SENT">Sent</option>
-          <option value="OPENED">Opened</option>
-          <option value="CLICKED">Clicked</option>
-          <option value="BOUNCED">Bounced</option>
-          <option value="COMPLAINED">Complained</option>
-          <option value="UNSUBSCRIBED">Unsubscribed</option>
-        </select>
+      {/* Filter & Sort */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Status:</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All</option>
+            <option value="SENT">Sent</option>
+            <option value="OPENED">Opened</option>
+            <option value="CLICKED">Clicked</option>
+            <option value="BOUNCED">Bounced</option>
+            <option value="COMPLAINED">Complained</option>
+            <option value="UNSUBSCRIBED">Unsubscribed</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Sort:</label>
+          <select
+            value={`${sortField}-${sortDir}`}
+            onChange={(e) => {
+              const [f, d] = e.target.value.split('-');
+              setSortField(f as 'date' | 'status');
+              setSortDir(d as 'asc' | 'desc');
+            }}
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="status-desc">Opened First</option>
+            <option value="status-asc">Unopened First</option>
+          </select>
+        </div>
+        <span className="text-xs text-gray-400 ml-auto">
+          {offers.length} total &middot; Page {currentPage} of {totalPages}
+        </span>
       </div>
 
       {/* Offer list */}
-      {offers.length === 0 ? (
+      {paginatedOffers.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <p className="text-lg font-medium">No offers found</p>
           <p className="text-sm mt-1">
@@ -117,7 +159,7 @@ function TrackingContent() {
         </div>
       ) : (
         <div className="space-y-3">
-          {offers.map((offer) => (
+          {paginatedOffers.map((offer) => (
             <div key={offer.id}>
               {offer.deal && (
                 <Link
@@ -130,6 +172,45 @@ function TrackingContent() {
               <OfferCard offer={offer} />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          >
+            Previous
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+            .map((p, idx, arr) => (
+              <span key={p}>
+                {idx > 0 && arr[idx - 1] !== p - 1 && (
+                  <span className="text-gray-400 px-1">...</span>
+                )}
+                <button
+                  onClick={() => setCurrentPage(p)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    p === currentPage
+                      ? 'bg-blue-600 text-white'
+                      : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {p}
+                </button>
+              </span>
+            ))}
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>
