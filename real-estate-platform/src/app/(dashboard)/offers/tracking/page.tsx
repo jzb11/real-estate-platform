@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { OfferedDeal } from '@prisma/client';
 import { OfferCard } from '@/components/ui/OfferCard';
+import { useToast } from '@/components/ui/Toast';
 import { downloadCsv } from '@/lib/exportCsv';
 
 type OfferWithDeal = OfferedDeal & {
@@ -17,6 +18,7 @@ type OfferWithDeal = OfferedDeal & {
 const PAGE_SIZE = 20;
 
 function TrackingContent() {
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('success') === 'true';
 

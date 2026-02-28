@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DealStatus } from '@prisma/client';
 import DataFreshnessAlert from '@/components/ui/DataFreshnessAlert';
+import { useToast } from '@/components/ui/Toast';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ export default function DealDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { toast } = useToast();
 
   const [deal, setDeal] = useState<DealDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -238,12 +240,12 @@ export default function DealDetailPage({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transition failed' }));
-        alert(err.error ?? 'Transition failed');
+        toast(err.error ?? 'Transition failed', 'error');
         return;
       }
       await fetchDeal();
     } catch {
-      alert('Network error — could not complete transition');
+      toast('Network error — could not complete transition', 'error');
     } finally {
       setIsTransitioning(false);
     }
@@ -260,12 +262,12 @@ export default function DealDetailPage({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Rejection failed' }));
-        alert(err.error ?? 'Rejection failed');
+        toast(err.error ?? 'Rejection failed', 'error');
         return;
       }
       await fetchDeal();
     } catch {
-      alert('Network error — could not reject deal');
+      toast('Network error — could not reject deal', 'error');
     } finally {
       setIsTransitioning(false);
     }
@@ -282,12 +284,12 @@ export default function DealDetailPage({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Reopen failed' }));
-        alert(err.error ?? 'Reopen failed');
+        toast(err.error ?? 'Reopen failed', 'error');
         return;
       }
       await fetchDeal();
     } catch {
-      alert('Network error — could not reopen deal');
+      toast('Network error — could not reopen deal', 'error');
     } finally {
       setIsTransitioning(false);
     }
@@ -299,12 +301,12 @@ export default function DealDetailPage({
       const res = await fetch(`/api/deals/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Delete failed' }));
-        alert(err.error ?? 'Delete failed');
+        toast(err.error ?? 'Delete failed', 'error');
         return;
       }
       router.push('/pipeline');
     } catch {
-      alert('Network error — could not delete deal');
+      toast('Network error — could not delete deal', 'error');
     }
   }
 
@@ -315,12 +317,12 @@ export default function DealDetailPage({
       const res = await fetch(`/api/deals/${id}/qualify`, { method: 'POST' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Qualification failed' }));
-        alert(err.error ?? 'Qualification failed');
+        toast(err.error ?? 'Qualification failed', 'error');
         return;
       }
       await fetchDeal();
     } catch {
-      alert('Network error — could not run qualification');
+      toast('Network error — could not run qualification', 'error');
     } finally {
       setIsQualifying(false);
     }
@@ -337,13 +339,13 @@ export default function DealDetailPage({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Analysis failed' }));
-        alert(err.error ?? 'Analysis failed');
+        toast(err.error ?? 'Analysis failed', 'error');
         return;
       }
       const data: AnalysisResult = await res.json();
       setAnalysis(data);
     } catch {
-      alert('Network error — could not run analysis');
+      toast('Network error — could not run analysis', 'error');
     } finally {
       setIsAnalyzing(false);
     }
@@ -397,13 +399,13 @@ export default function DealDetailPage({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Failed to save notes' }));
-        alert(err.error ?? 'Failed to save notes');
+        toast(err.error ?? 'Failed to save notes', 'error');
         return;
       }
       setIsEditingNotes(false);
       await fetchDeal();
     } catch {
-      alert('Network error — could not save notes');
+      toast('Network error — could not save notes', 'error');
     } finally {
       setIsSavingNotes(false);
     }

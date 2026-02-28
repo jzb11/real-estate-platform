@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { DealStatus } from '@prisma/client';
 import { CONTEXTUAL_KB_LINKS } from '@/lib/kb/contextualLinks';
+import { useToast } from '@/components/ui/Toast';
 import PipelineColumn from './PipelineColumn';
 import DealCard, { type DealWithPipeline } from './DealCard';
 import { downloadCsv } from '@/lib/exportCsv';
@@ -23,6 +24,7 @@ interface PipelineData {
 }
 
 export default function PipelinePage() {
+  const { toast } = useToast();
   const helpLinks = CONTEXTUAL_KB_LINKS['pipeline'] ?? [];
 
   const [data, setData] = useState<PipelineData | null>(null);
@@ -64,12 +66,12 @@ export default function PipelinePage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transition failed' }));
-        alert(err.error ?? 'Transition failed');
+        toast(err.error ?? 'Transition failed', 'error');
         return;
       }
       await fetchDeals();
     } catch {
-      alert('Network error — could not complete transition');
+      toast('Network error — could not complete transition', 'error');
     } finally {
       setTransitioningDealId(null);
     }
@@ -103,7 +105,7 @@ export default function PipelinePage() {
       setSelectedDeals(new Set());
       await fetchDeals();
     } catch {
-      alert('Some transitions failed. Please try again.');
+      toast('Some transitions failed. Please try again.', 'error');
     } finally {
       setBulkTransitioning(false);
     }
@@ -126,7 +128,7 @@ export default function PipelinePage() {
       setSelectedDeals(new Set());
       await fetchDeals();
     } catch {
-      alert('Some qualifications failed. Please try again.');
+      toast('Some qualifications failed. Please try again.', 'error');
     } finally {
       setBulkQualifying(false);
     }
