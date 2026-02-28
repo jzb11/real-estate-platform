@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  const [dealCounts, propertiesCount, offersCount, closedDeals] = await Promise.all([
+  const [dealCounts, propertiesCount, offersCount, closedDeals, openedOffers, activeSequences] = await Promise.all([
     // Deal counts by status
     prisma.deal.groupBy({
       by: ['status'],
@@ -38,6 +38,14 @@ export async function GET() {
     prisma.deal.count({
       where: { userId: user.id, status: 'CLOSED' },
     }),
+    // Opened offers
+    prisma.offeredDeal.count({
+      where: { deal: { userId: user.id }, emailOpenedAt: { not: null } },
+    }),
+    // Active follow-up sequences
+    prisma.followUpScheduled.count({
+      where: { userId: user.id, status: 'ACTIVE' },
+    }),
   ]);
 
   const dealsByStatus: Record<string, number> = {};
@@ -51,6 +59,10 @@ export async function GET() {
     ? Math.round((closedDeals / totalDeals) * 100)
     : 0;
 
+  const openRate = offersCount > 0
+    ? Math.round((openedOffers / offersCount) * 100)
+    : 0;
+
   return NextResponse.json({
     totalDeals,
     dealsByStatus,
@@ -58,5 +70,7 @@ export async function GET() {
     offersCount,
     closedDeals,
     conversionRate,
+    openRate,
+    activeSequences,
   });
 }

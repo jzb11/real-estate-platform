@@ -35,6 +35,8 @@ interface DashboardStats {
   offersCount: number;
   closedDeals: number;
   conversionRate: number;
+  openRate: number;
+  activeSequences: number;
 }
 
 interface RecentActivity {
@@ -160,7 +162,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Secondary stats */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             {isLoading ? (
               <div className="h-7 w-12 animate-pulse rounded bg-gray-200"></div>
@@ -181,6 +183,26 @@ export default function DashboardPage() {
             <p className="mt-1 text-sm text-gray-500">Offers Sent</p>
             <Link href="/offers/tracking" className="mt-2 block text-xs text-blue-600 hover:underline">
               View tracking &rarr;
+            </Link>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            {isLoading ? (
+              <div className="h-7 w-12 animate-pulse rounded bg-gray-200"></div>
+            ) : (
+              <p className="text-2xl font-bold text-gray-900">{stats?.openRate ?? 0}%</p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">Open Rate</p>
+            <p className="mt-2 text-xs text-gray-400">Emails opened / sent</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            {isLoading ? (
+              <div className="h-7 w-12 animate-pulse rounded bg-gray-200"></div>
+            ) : (
+              <p className="text-2xl font-bold text-gray-900">{stats?.activeSequences ?? 0}</p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">Active Sequences</p>
+            <Link href="/sequences" className="mt-2 block text-xs text-blue-600 hover:underline">
+              View sequences &rarr;
             </Link>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

@@ -73,8 +73,11 @@ export default function PipelinePage() {
     }
   }
 
+  const [showRejected, setShowRejected] = useState(false);
+
   // Qualified-only flat list
   const qualifiedDeals = data?.pipeline?.QUALIFIED ?? [];
+  const rejectedDeals = data?.pipeline?.REJECTED ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -171,6 +174,38 @@ export default function PipelinePage() {
                 transitioningDealId={transitioningDealId}
               />
             ))}
+          </div>
+        )}
+
+        {/* Rejected deals (collapsible) */}
+        {!isLoading && !error && !qualifiedOnly && rejectedDeals.length > 0 && (
+          <div className="mt-6">
+            <button
+              onClick={() => setShowRejected((v) => !v)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <svg
+                className={`h-4 w-4 transition-transform ${showRejected ? 'rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              Rejected Deals ({rejectedDeals.length})
+            </button>
+            {showRejected && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+                {rejectedDeals.map((deal) => (
+                  <DealCard
+                    key={deal.id}
+                    deal={deal}
+                    onTransition={handleTransition}
+                    isTransitioning={transitioningDealId === deal.id}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -111,8 +111,18 @@ export default function DealCard({ deal, onTransition, isTransitioning = false }
           </button>
         ) : (
           <span className="flex-1 rounded bg-gray-50 px-2 py-1.5 text-center text-xs text-gray-400 border border-gray-200">
-            No further stages
+            {deal.status === 'REJECTED' ? 'Rejected' : 'No further stages'}
           </span>
+        )}
+        {deal.status !== 'CLOSED' && deal.status !== 'REJECTED' && (
+          <button
+            onClick={() => onTransition(deal.id, 'REJECTED')}
+            disabled={isTransitioning}
+            className="rounded border border-red-200 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+            title="Reject deal"
+          >
+            Reject
+          </button>
         )}
         <Link
           href={`/deals/${deal.id}`}
