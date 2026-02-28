@@ -74,7 +74,7 @@ export function evaluateCreativeFinanceRule(
 
   try {
     matched = evaluateOperator(fieldValue, rule.operator, rule.value);
-  } catch (error) {
+  } catch {
     // Evaluation errors are treated as non-match — rule condition not satisfied
     matched = false;
   }
