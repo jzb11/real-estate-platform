@@ -10,7 +10,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "scrape": "tsx scripts/scrape.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.38.3",
@@ -24,6 +25,7 @@
     "lodash": "^4.17.23",
     "next": "15.5.12",
     "papaparse": "^5.5.3",
+    "playwright": "^1.58.2",
     "prisma": "^7.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",

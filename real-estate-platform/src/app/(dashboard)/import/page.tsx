@@ -12,6 +12,7 @@ interface ImportResult {
 }
 
 type ImportStatus = 'idle' | 'uploading' | 'importing' | 'done' | 'error';
+type ScrapeStatus = 'idle' | 'scraping' | 'done' | 'error';
 
 export default function ImportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -21,6 +22,14 @@ export default function ImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
+
+  // Scrape state
+  const [scrapeStatus, setScrapeStatus] = useState<ScrapeStatus>('idle');
+  const [scrapeLocation, setScrapeLocation] = useState('');
+  const [scrapeMinEquity, setScrapeMinEquity] = useState('');
+  const [scrapeResult, setScrapeResult] = useState<ImportResult | null>(null);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [showScrapeForm, setShowScrapeForm] = useState(false);
 
   // ── File selection ────────────────────────────────────────────────────────────
 
@@ -101,6 +110,59 @@ export default function ImportPage() {
     setStatus('idle');
     setShowErrorDetails(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  // ── Scrape ──────────────────────────────────────────────────────────────────
+
+  async function handleScrape() {
+    if (!scrapeLocation.trim()) return;
+
+    setScrapeStatus('scraping');
+    setScrapeResult(null);
+    setScrapeError(null);
+
+    const body: Record<string, unknown> = {
+      location: scrapeLocation.trim(),
+    };
+
+    const filters: Record<string, unknown> = {};
+    if (scrapeMinEquity) {
+      const eq = parseInt(scrapeMinEquity, 10);
+      if (!isNaN(eq) && eq >= 0 && eq <= 100) {
+        filters.minEquityPercent = eq;
+      }
+    }
+    if (Object.keys(filters).length > 0) {
+      body.filters = filters;
+    }
+
+    try {
+      const res = await fetch('/api/properties/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setScrapeError(data.error ?? 'Scrape failed');
+        setScrapeStatus('error');
+        return;
+      }
+
+      setScrapeResult(data as ImportResult);
+      setScrapeStatus('done');
+    } catch {
+      setScrapeError('Network error — could not reach the server.');
+      setScrapeStatus('error');
+    }
+  }
+
+  function handleScrapeReset() {
+    setScrapeStatus('idle');
+    setScrapeResult(null);
+    setScrapeError(null);
   }
 
   const isProcessing = status === 'uploading' || status === 'importing';
@@ -341,6 +403,156 @@ export default function ImportPage() {
             </div>
           </div>
         )}
+        {/* ── Divider ───────────────────────────────────────────────────── */}
+        <div className="my-10 flex items-center gap-3">
+          <div className="flex-1 border-t border-gray-200" />
+          <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">or</span>
+          <div className="flex-1 border-t border-gray-200" />
+        </div>
+
+        {/* ── Scrape from PropStream ──────────────────────────────────── */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Scrape from PropStream</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Automatically log in, search, and export data from PropStream. Runs locally only.
+          </p>
+
+          {!showScrapeForm && scrapeStatus === 'idle' && (
+            <button
+              onClick={() => setShowScrapeForm(true)}
+              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              Configure Scrape
+            </button>
+          )}
+
+          {showScrapeForm && scrapeStatus === 'idle' && (
+            <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+              <div>
+                <label htmlFor="scrapeLocation" className="block text-sm font-medium text-gray-700 mb-1">
+                  Location *
+                </label>
+                <input
+                  id="scrapeLocation"
+                  type="text"
+                  value={scrapeLocation}
+                  onChange={(e) => setScrapeLocation(e.target.value)}
+                  placeholder="Miami-Dade County, FL or zip code"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="scrapeMinEquity" className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Equity % (optional)
+                </label>
+                <input
+                  id="scrapeMinEquity"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={scrapeMinEquity}
+                  onChange={(e) => setScrapeMinEquity(e.target.value)}
+                  placeholder="e.g. 30"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleScrape}
+                  disabled={!scrapeLocation.trim()}
+                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+                >
+                  Start Scrape
+                </button>
+                <button
+                  onClick={() => setShowScrapeForm(false)}
+                  className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {scrapeStatus === 'scraping' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 text-center">
+              <div className="flex items-center justify-center gap-2 text-blue-700">
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="font-semibold">Scraping PropStream...</span>
+              </div>
+              <p className="mt-2 text-xs text-blue-600">
+                This may take 1-2 minutes. Browser is logging in, searching, and exporting data.
+              </p>
+            </div>
+          )}
+
+          {scrapeStatus === 'error' && scrapeError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+              <p className="font-semibold">Scrape failed</p>
+              <p className="mt-1 text-sm">{scrapeError}</p>
+              <button
+                onClick={handleScrapeReset}
+                className="mt-3 text-sm text-red-600 underline hover:text-red-800"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {scrapeStatus === 'done' && scrapeResult && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-green-200 bg-green-50 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="text-base font-semibold text-green-900">Scrape Complete</h3>
+                </div>
+
+                <dl className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <dt className="text-gray-600"><span className="font-mono text-green-600">+</span> Imported</dt>
+                    <dd className="font-bold text-green-800">{scrapeResult.imported.toLocaleString()}</dd>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <dt className="text-gray-600"><span className="font-mono text-blue-600">~</span> Updated</dt>
+                    <dd className="font-bold text-blue-800">{scrapeResult.updated.toLocaleString()}</dd>
+                  </div>
+                  {scrapeResult.skipped > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <dt className="text-gray-600">Skipped</dt>
+                      <dd className="font-bold text-gray-700">{scrapeResult.skipped.toLocaleString()}</dd>
+                    </div>
+                  )}
+                  <div className="border-t border-green-200 pt-2 flex items-center justify-between text-sm">
+                    <dt className="text-gray-600">Total rows</dt>
+                    <dd className="font-semibold text-gray-900">{scrapeResult.totalRows.toLocaleString()}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/properties"
+                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+                >
+                  Browse Properties
+                </Link>
+                <button
+                  onClick={handleScrapeReset}
+                  className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+                >
+                  Scrape Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
