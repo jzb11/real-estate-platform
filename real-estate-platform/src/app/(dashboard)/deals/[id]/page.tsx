@@ -174,6 +174,9 @@ export default function DealDetailPage({
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  // Export
+  const [copied, setCopied] = useState(false);
+
   // ── Data fetching ────────────────────────────────────────────────────────────
 
   async function fetchDeal() {
@@ -294,6 +297,43 @@ export default function DealDetailPage({
     } finally {
       setIsAnalyzing(false);
     }
+  }
+
+  function handleExportDeal() {
+    if (!deal) return;
+    const lines = [
+      `DEAL SUMMARY — ${deal.property.address}`,
+      `${deal.property.city}, ${deal.property.state} ${deal.property.zip}`,
+      ``,
+      `Status: ${deal.status.replace('_', ' ')}`,
+      `Qualification Score: ${deal.qualificationScore}/100`,
+      ``,
+      `--- PROPERTY DETAILS ---`,
+      `Type: ${deal.property.propertyType ?? 'N/A'}`,
+      `Owner: ${deal.property.ownershipName ?? 'N/A'}`,
+      `Estimated Value (ARV): ${formatCurrency(deal.property.estimatedValue)}`,
+      `Tax Assessed Value: ${formatCurrency(deal.property.taxAssessedValue)}`,
+      `Last Sale Price: ${formatCurrency(deal.property.lastSalePrice)}`,
+      `Last Sale Date: ${formatDate(deal.property.lastSaleDate)}`,
+      ...(deal.property.yearBuilt ? [`Year Built: ${deal.property.yearBuilt}`] : []),
+      ...(deal.property.squareFootage ? [`Sq Ft: ${deal.property.squareFootage.toLocaleString()}`] : []),
+      ...(deal.property.bedrooms != null || deal.property.bathrooms != null
+        ? [`Beds/Baths: ${deal.property.bedrooms ?? '—'} / ${deal.property.bathrooms ?? '—'}`]
+        : []),
+      ...(deal.property.unitCount && deal.property.unitCount > 1 ? [`Units: ${deal.property.unitCount}`] : []),
+      ...(deal.property.equityPercent != null ? [`Equity: ${deal.property.equityPercent}%`] : []),
+      ...(deal.property.annualPropertyTax != null ? [`Annual Tax: ${formatCurrency(deal.property.annualPropertyTax)}`] : []),
+      ``,
+      `--- MAO CALCULATOR ---`,
+      `ARV: ${formatCurrency(arv || null)}`,
+      `Repair Estimate: ${formatCurrency(repairs || null)}`,
+      `MAO (70% Rule): ${formatCurrency(mao)}`,
+      ...(distressSignals.length > 0 ? [``, `Distress Signals: ${distressSignals.join(', ')}`] : []),
+      ...(deal.notes ? [``, `--- NOTES ---`, deal.notes] : []),
+    ];
+    navigator.clipboard.writeText(lines.join('\n'));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleSaveNotes() {
@@ -860,6 +900,12 @@ export default function DealDetailPage({
                   </button>
                 </>
               )}
+              <button
+                onClick={handleExportDeal}
+                className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+              >
+                {copied ? 'Copied!' : 'Copy Summary'}
+              </button>
               <Link
                 href="/pipeline"
                 className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"

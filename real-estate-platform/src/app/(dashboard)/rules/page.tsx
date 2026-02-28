@@ -37,6 +37,13 @@ const FIELD_OPTIONS = [
   { value: 'lastSalePrice', label: 'Last Sale Price' },
   { value: 'taxAssessedValue', label: 'Tax Assessed Value' },
   { value: 'distressSignals', label: 'Distress Signals' },
+  { value: 'yearBuilt', label: 'Year Built' },
+  { value: 'squareFootage', label: 'Square Footage' },
+  { value: 'bedrooms', label: 'Bedrooms' },
+  { value: 'bathrooms', label: 'Bathrooms' },
+  { value: 'unitCount', label: 'Unit Count' },
+  { value: 'lotSize', label: 'Lot Size (sq ft)' },
+  { value: 'annualPropertyTax', label: 'Annual Property Tax' },
 ];
 
 const OPERATOR_OPTIONS = ['GT', 'LT', 'EQ', 'IN', 'CONTAINS', 'RANGE', 'NOT_CONTAINS'];
