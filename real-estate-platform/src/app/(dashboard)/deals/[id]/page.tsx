@@ -310,8 +310,14 @@ export default function DealDetailPage({
 
           {/* ── Section: Property Details ────────────────────────────────── */}
           <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-100 px-6 py-4">
+            <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-gray-900">Property Details</h2>
+              <Link
+                href={`/properties/${deal.property.id}`}
+                className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                View Full Property
+              </Link>
             </div>
             <div className="px-6 py-5">
               <dl className="grid gap-4 sm:grid-cols-2">
@@ -592,6 +598,14 @@ export default function DealDetailPage({
                 <span className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-2.5 text-sm text-gray-400">
                   {deal.status === 'CLOSED' ? 'Deal closed' : deal.status === 'REJECTED' ? 'Deal rejected' : 'No further stages'}
                 </span>
+              )}
+              {deal.status === 'QUALIFIED' && (
+                <Link
+                  href={`/offers/${deal.id}/compose`}
+                  className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 transition-colors"
+                >
+                  Send Offer
+                </Link>
               )}
               <Link
                 href="/pipeline"
