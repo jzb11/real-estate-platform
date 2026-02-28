@@ -41,6 +41,7 @@ export default function ComposePage() {
     recipientName?: string;
     repairCosts: number;
     sequenceId?: string;
+    dncAcknowledged?: boolean;
   }) => {
     setLoading(true);
     setSubmitError('');
@@ -52,8 +53,12 @@ export default function ComposePage() {
       });
 
       if (!response.ok) {
-        const err = await response.json() as { error?: string };
-        setSubmitError(err.error ?? 'Failed to send offer');
+        const err = await response.json() as { error?: string; message?: string };
+        if (err.error === 'DNC_FLAGGED') {
+          setSubmitError(err.message ?? 'Owner is on the Do Not Call list. Acknowledge to proceed.');
+        } else {
+          setSubmitError(err.error ?? 'Failed to send offer');
+        }
         return;
       }
 

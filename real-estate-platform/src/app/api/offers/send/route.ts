@@ -6,6 +6,8 @@ import { renderOfferEmail } from '@/lib/email/offerTemplate';
 import { sendOfferEmail } from '@/lib/email/sendgrid';
 import { calculateMAO } from '@/lib/qualification/engine';
 import { scheduleFollowUpSequence } from '@/lib/queue/jobs';
+import { checkDncList, TcpaViolationError } from '@/lib/compliance/tcpaValidator';
+import { decryptPhone } from '@/lib/compliance/encryption';
 
 const sendOfferSchema = z.object({
   dealId: z.string().min(1, 'dealId is required'),
@@ -14,6 +16,7 @@ const sendOfferSchema = z.object({
   repairCosts: z.number().min(0).optional().default(0),
   subject: z.string().max(200).optional(),
   sequenceId: z.string().optional(), // Optional: trigger a follow-up sequence after sending
+  dncAcknowledged: z.boolean().optional(), // Client confirmed DNC warning
 });
 
 /**
@@ -72,7 +75,7 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
-  const { dealId, recipientEmail, recipientName, repairCosts, subject, sequenceId } = parsed;
+  const { dealId, recipientEmail, recipientName, repairCosts, subject, sequenceId, dncAcknowledged } = parsed;
 
   try {
     // Fetch deal with property, verify ownership
@@ -90,6 +93,26 @@ export async function POST(req: NextRequest) {
         { error: 'Deal missing property data' },
         { status: 400 }
       );
+    }
+
+    // DNC compliance check — if the property has an owner phone, verify it's not on DNC list
+    if (deal.property.ownershipPhone && !dncAcknowledged) {
+      try {
+        const phone = decryptPhone(deal.property.ownershipPhone);
+        await checkDncList(phone);
+      } catch (err) {
+        if (err instanceof TcpaViolationError && err.violationType === 'DNC_LIST') {
+          return NextResponse.json(
+            {
+              error: 'DNC_FLAGGED',
+              message: 'The property owner\'s phone is on the Do Not Call list. Sending email offers to DNC-listed contacts requires acknowledgment.',
+            },
+            { status: 422 }
+          );
+        }
+        // Non-DNC errors (e.g. decryption failure) — log but don't block the send
+        console.error('DNC check error (non-blocking):', err);
+      }
     }
 
     // Validate sequence ownership if provided

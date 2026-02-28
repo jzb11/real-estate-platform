@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { OfferedDeal } from '@prisma/client';
 import { OfferCard } from '@/components/ui/OfferCard';
+import { downloadCsv } from '@/lib/exportCsv';
 
 type OfferWithDeal = OfferedDeal & {
   deal?: {
@@ -63,6 +64,22 @@ function TrackingContent() {
 
   const openRate = stats.total > 0 ? ((stats.opened / stats.total) * 100).toFixed(1) : '0.0';
 
+  function exportOffersCsv() {
+    const rows = sortedOffers.map((o) => ({
+      sentTo: o.sentToEmail,
+      recipientName: o.recipientName ?? '',
+      property: o.deal ? `${o.deal.property.address}, ${o.deal.property.city}, ${o.deal.property.state}` : '',
+      status: o.status,
+      sentAt: new Date(o.sentAt ?? o.createdAt).toISOString(),
+      opened: o.emailOpenedAt ? 'Yes' : 'No',
+      openedAt: o.emailOpenedAt ? new Date(o.emailOpenedAt).toISOString() : '',
+      clicked: o.linkClickedAt ? 'Yes' : 'No',
+      clickedAt: o.linkClickedAt ? new Date(o.linkClickedAt).toISOString() : '',
+      bounced: o.bouncedAt ? 'Yes' : 'No',
+    }));
+    downloadCsv(rows, `offers-export-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
+
   if (loading) {
     return (
       <div className="p-4">
@@ -80,7 +97,16 @@ function TrackingContent() {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-3xl font-bold">Offer Tracking</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Offer Tracking</h1>
+        <button
+          onClick={exportOffersCsv}
+          disabled={offers.length === 0}
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-40"
+        >
+          Export CSV
+        </button>
+      </div>
 
       {showSuccess && (
         <div className="bg-green-100 text-green-800 p-3 rounded-md text-sm font-medium">

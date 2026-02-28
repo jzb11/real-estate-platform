@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<PipelineData | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activityFilter, setActivityFilter] = useState<string>('all');
 
   useEffect(() => {
     Promise.all([
@@ -114,7 +115,17 @@ export default function DashboardPage() {
   recentActivity.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
-  const topActivity = recentActivity.slice(0, 8);
+
+  // Filter activities by type
+  const filteredActivity = activityFilter === 'all'
+    ? recentActivity
+    : recentActivity.filter((a) => {
+        if (activityFilter === 'status') return a.fieldChanged === 'status';
+        if (activityFilter === 'score') return a.fieldChanged.toLowerCase().includes('score');
+        if (activityFilter === 'other') return a.fieldChanged !== 'status' && !a.fieldChanged.toLowerCase().includes('score');
+        return true;
+      });
+  const topActivity = filteredActivity.slice(0, 12);
 
   const firstName = user?.firstName ?? user?.username ?? 'there';
 
@@ -287,7 +298,29 @@ export default function DashboardPage() {
 
         {/* Recent activity */}
         <div>
-          <h2 className="mb-3 text-lg font-semibold text-gray-800">Recent Activity</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-800">Recent Activity</h2>
+            <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-100 p-0.5">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'status', label: 'Stage Changes' },
+                { key: 'score', label: 'Scores' },
+                { key: 'other', label: 'Other' },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setActivityFilter(opt.key)}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    activityFilter === opt.key
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {isLoading ? (
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => (
@@ -296,9 +329,11 @@ export default function DashboardPage() {
             </div>
           ) : topActivity.length === 0 ? (
             <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-              <p className="text-gray-500">No recent activity.</p>
+              <p className="text-gray-500">
+                {activityFilter !== 'all' ? 'No matching activity.' : 'No recent activity.'}
+              </p>
               <p className="mt-1 text-sm text-gray-400">
-                Import a CSV or create deals to get started.
+                {activityFilter !== 'all' ? 'Try a different filter.' : 'Import a CSV or create deals to get started.'}
               </p>
             </div>
           ) : (

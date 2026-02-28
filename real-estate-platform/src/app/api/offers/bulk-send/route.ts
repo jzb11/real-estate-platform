@@ -6,6 +6,8 @@ import { renderOfferEmail } from '@/lib/email/offerTemplate';
 import { sendOfferEmail } from '@/lib/email/sendgrid';
 import { calculateMAO } from '@/lib/qualification/engine';
 import { scheduleFollowUpSequence } from '@/lib/queue/jobs';
+import { checkDncList, TcpaViolationError } from '@/lib/compliance/tcpaValidator';
+import { decryptPhone } from '@/lib/compliance/encryption';
 
 // Maximum number of offers per bulk-send request to prevent abuse
 const BULK_SEND_LIMIT = 50;
@@ -17,6 +19,7 @@ const bulkSendItemSchema = z.object({
   repairCosts: z.number().min(0).optional().default(0),
   subject: z.string().max(200).optional(),
   sequenceId: z.string().optional(), // Optional: per-deal sequence override
+  dncAcknowledged: z.boolean().optional(), // Client confirmed DNC warning for this deal
 });
 
 const bulkSendSchema = z.object({
@@ -34,6 +37,7 @@ type BulkSendResult = {
   sendgridMessageId?: string;
   scheduledSequenceId?: string;
   error?: string;
+  dncFlagged?: boolean;
 };
 
 /**
@@ -160,7 +164,7 @@ export async function POST(req: NextRequest) {
   let failed = 0;
 
   for (const offer of offers) {
-    const { dealId, recipientEmail, recipientName, repairCosts, subject, sequenceId: itemSequenceId } = offer;
+    const { dealId, recipientEmail, recipientName, repairCosts, subject, sequenceId: itemSequenceId, dncAcknowledged } = offer;
 
     // Resolve which sequence to use: per-deal override takes priority over global
     const resolvedSequenceId = itemSequenceId ?? globalSequenceId;
@@ -182,6 +186,24 @@ export async function POST(req: NextRequest) {
         results.push(result);
         failed++;
         continue;
+      }
+
+      // DNC compliance check — skip deals with DNC-flagged owners unless acknowledged
+      if (deal.property.ownershipPhone && !dncAcknowledged) {
+        try {
+          const phone = decryptPhone(deal.property.ownershipPhone);
+          await checkDncList(phone);
+        } catch (err) {
+          if (err instanceof TcpaViolationError && err.violationType === 'DNC_LIST') {
+            result.error = 'Owner phone is on the Do Not Call list';
+            result.dncFlagged = true;
+            results.push(result);
+            failed++;
+            continue;
+          }
+          // Non-DNC errors — log but don't block
+          console.error(`DNC check error for deal ${dealId} (non-blocking):`, err);
+        }
       }
 
       // Validate per-deal sequence if different from global

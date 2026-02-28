@@ -6,6 +6,7 @@ import { DealStatus } from '@prisma/client';
 import { CONTEXTUAL_KB_LINKS } from '@/lib/kb/contextualLinks';
 import PipelineColumn from './PipelineColumn';
 import DealCard, { type DealWithPipeline } from './DealCard';
+import { downloadCsv } from '@/lib/exportCsv';
 
 // Pipeline stages to display (excluding REJECTED — shown separately if needed)
 const PIPELINE_STAGES: DealStatus[] = [
@@ -75,6 +76,60 @@ export default function PipelinePage() {
   }
 
   const [showRejected, setShowRejected] = useState(false);
+  const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
+  const [bulkTransitioning, setBulkTransitioning] = useState(false);
+
+  function toggleDealSelection(dealId: string) {
+    setSelectedDeals((prev) => {
+      const next = new Set(prev);
+      if (next.has(dealId)) next.delete(dealId);
+      else next.add(dealId);
+      return next;
+    });
+  }
+
+  async function handleBulkTransition(targetState: DealStatus) {
+    if (selectedDeals.size === 0) return;
+    setBulkTransitioning(true);
+    try {
+      const promises = [...selectedDeals].map((dealId) =>
+        fetch(`/api/deals/${dealId}/transition`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetState }),
+        })
+      );
+      await Promise.all(promises);
+      setSelectedDeals(new Set());
+      await fetchDeals();
+    } catch {
+      alert('Some transitions failed. Please try again.');
+    } finally {
+      setBulkTransitioning(false);
+    }
+  }
+
+  function exportPipelineCsv() {
+    if (!data) return;
+    const rows: Record<string, string | number | null>[] = [];
+    for (const stage of [...PIPELINE_STAGES, 'REJECTED' as DealStatus]) {
+      for (const deal of data.pipeline[stage] ?? []) {
+        rows.push({
+          stage: deal.status,
+          title: deal.title,
+          address: deal.property.address,
+          city: deal.property.city,
+          state: deal.property.state,
+          score: deal.qualificationScore,
+          estimatedValue: deal.property.estimatedValue ?? null,
+          yearBuilt: deal.property.yearBuilt ?? null,
+          sqft: deal.property.squareFootage ?? null,
+          units: deal.property.unitCount ?? null,
+        });
+      }
+    }
+    downloadCsv(rows, `pipeline-export-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
 
   // Search filter — applied client-side across all stages
   const searchLower = searchQuery.toLowerCase().trim();
@@ -107,7 +162,7 @@ export default function PipelinePage() {
               <p className="mt-1 text-sm text-gray-500">{data.total} total deals</p>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
               <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -120,6 +175,14 @@ export default function PipelinePage() {
                 className="w-48 rounded-lg border border-gray-200 bg-white pl-8 pr-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
+            <button
+              onClick={exportPipelineCsv}
+              disabled={!data || data.total === 0}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-40"
+              title="Export pipeline to CSV"
+            >
+              Export CSV
+            </button>
             <Link
               href="/import"
               className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"

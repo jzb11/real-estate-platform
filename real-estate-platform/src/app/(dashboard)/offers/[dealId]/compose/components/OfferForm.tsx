@@ -13,6 +13,7 @@ interface OfferFormProps {
     recipientName?: string;
     repairCosts: number;
     sequenceId?: string;
+    dncAcknowledged?: boolean;
   }) => Promise<void>;
   loading?: boolean;
 }
@@ -41,6 +42,10 @@ export function OfferForm({ deal, sequences, onSubmit, loading }: OfferFormProps
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+
+  // DNC compliance state
+  const [dncStatus, setDncStatus] = useState<'unchecked' | 'checking' | 'clear' | 'flagged' | 'no_phone'>('unchecked');
+  const [dncAcknowledged, setDncAcknowledged] = useState(false);
 
   const maoResult = calculateMAO(deal.property.estimatedValue ?? 0, repairCosts);
   const offerPrice = Math.round(maoResult.mao * 0.95);
@@ -74,14 +79,47 @@ export function OfferForm({ deal, sequences, onSubmit, loading }: OfferFormProps
     }
   }
 
+  async function runDncCheck() {
+    setDncStatus('checking');
+    try {
+      const res = await fetch('/api/compliance/check-deal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id }),
+      });
+      if (!res.ok) {
+        setDncStatus('unchecked');
+        return;
+      }
+      const data = await res.json() as { status: string };
+      setDncStatus(data.status as 'clear' | 'flagged' | 'no_phone');
+    } catch {
+      setDncStatus('unchecked');
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Run DNC check before first send if not yet checked
+    if (dncStatus === 'unchecked') {
+      await runDncCheck();
+      // After check, if flagged, the UI will show a warning — don't submit yet
+      return;
+    }
+
+    // If flagged and not acknowledged, don't submit
+    if (dncStatus === 'flagged' && !dncAcknowledged) {
+      return;
+    }
+
     await onSubmit({
       dealId: deal.id,
       recipientEmail,
       recipientName: recipientName || undefined,
       repairCosts,
       sequenceId: sequenceId || undefined,
+      dncAcknowledged: dncStatus === 'flagged' ? true : undefined,
     });
   };
 
@@ -164,6 +202,52 @@ export function OfferForm({ deal, sequences, onSubmit, loading }: OfferFormProps
           </select>
         </div>
 
+        {/* DNC compliance warning */}
+        {dncStatus === 'flagged' && (
+          <div className="border border-amber-300 bg-amber-50 rounded-lg p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <svg className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Do Not Call List Warning</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  The property owner&apos;s phone number is on the Do Not Call list.
+                  While email outreach is governed by CAN-SPAM (not TCPA), contacting
+                  DNC-listed individuals carries compliance risk.
+                </p>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dncAcknowledged}
+                onChange={(e) => setDncAcknowledged(e.target.checked)}
+                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              <span className="text-sm text-amber-800 font-medium">
+                I acknowledge the DNC status and want to proceed with the email offer
+              </span>
+            </label>
+          </div>
+        )}
+
+        {dncStatus === 'clear' && (
+          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Compliance check passed — owner not on DNC list
+          </div>
+        )}
+
+        {dncStatus === 'checking' && (
+          <div className="flex items-center gap-2 text-sm text-gray-500 px-3 py-2">
+            <div className="h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+            Running compliance check...
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             type="button"
@@ -175,10 +259,10 @@ export function OfferForm({ deal, sequences, onSubmit, loading }: OfferFormProps
           </button>
           <button
             type="submit"
-            disabled={loading || !recipientEmail}
+            disabled={loading || !recipientEmail || dncStatus === 'checking' || (dncStatus === 'flagged' && !dncAcknowledged)}
             className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
-            {loading ? 'Sending...' : 'Send Offer'}
+            {loading ? 'Sending...' : dncStatus === 'unchecked' ? 'Check & Send' : 'Send Offer'}
           </button>
         </div>
       </form>

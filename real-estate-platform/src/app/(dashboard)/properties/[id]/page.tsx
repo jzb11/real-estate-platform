@@ -78,6 +78,8 @@ export default function PropertyDetailPage() {
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -137,29 +139,70 @@ export default function PropertyDetailPage() {
         </Link>
 
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">{property.address}</h1>
-          <p className="text-gray-500">
-            {property.city}, {property.state} {property.zip}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {property.propertyType && (
-              <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                {property.propertyType}
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{property.address}</h1>
+            <p className="text-gray-500">
+              {property.city}, {property.state} {property.zip}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {property.propertyType && (
+                <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                  {property.propertyType}
+                </span>
+              )}
+              <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                property.dataSource === 'SCRAPER' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {property.dataSource}
               </span>
-            )}
-            <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-              property.dataSource === 'SCRAPER' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
-            }`}>
-              {property.dataSource}
-            </span>
-            {property.isStale && (
-              <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                Stale Data
-              </span>
-            )}
+              {property.isStale && (
+                <span className="inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                  Stale Data
+                </span>
+              )}
+            </div>
           </div>
+          <button
+            onClick={async () => {
+              setRefreshing(true);
+              setRefreshMsg(null);
+              try {
+                const res = await fetch('/api/properties/skip-trace', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ propertyId: property.id }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                  setRefreshMsg('Skip-trace queued. Data will update shortly.');
+                } else if (res.status === 409) {
+                  setRefreshMsg('A skip-trace is already in progress for this property.');
+                } else {
+                  setRefreshMsg(data.error ?? 'Failed to start skip-trace.');
+                }
+              } catch {
+                setRefreshMsg('Network error.');
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+            disabled={refreshing}
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-50 shrink-0"
+          >
+            {refreshing ? 'Requesting...' : 'Refresh Data'}
+          </button>
         </div>
+
+        {refreshMsg && (
+          <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+            refreshMsg.includes('queued')
+              ? 'border-green-200 bg-green-50 text-green-800'
+              : 'border-yellow-200 bg-yellow-50 text-yellow-800'
+          }`}>
+            {refreshMsg}
+          </div>
+        )}
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">

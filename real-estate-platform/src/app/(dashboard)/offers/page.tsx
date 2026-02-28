@@ -14,7 +14,7 @@ interface BulkOfferEntry {
 
 interface BulkSendResult {
   summary: { total: number; succeeded: number; failed: number };
-  results: { dealId: string; success: boolean; error?: string }[];
+  results: { dealId: string; success: boolean; error?: string; dncFlagged?: boolean }[];
 }
 
 const OFFER_STAGES = ['QUALIFIED', 'ANALYZING', 'SOURCED', 'UNDER_CONTRACT'] as const;
@@ -316,7 +316,12 @@ export default function OffersPage() {
                     {bulkResult.results
                       .filter((r) => !r.success)
                       .map((r) => (
-                        <li key={r.dealId}>Deal {r.dealId.slice(0, 8)}...: {r.error}</li>
+                        <li key={r.dealId}>
+                          {r.dncFlagged && (
+                            <span className="inline-block bg-amber-200 text-amber-800 rounded px-1 mr-1 font-semibold">DNC</span>
+                          )}
+                          Deal {r.dealId.slice(0, 8)}...: {r.error}
+                        </li>
                       ))}
                   </ul>
                 )}

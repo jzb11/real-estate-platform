@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { downloadCsv } from '@/lib/exportCsv';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -341,12 +342,37 @@ export default function PropertiesPage() {
               <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} properties found</p>
             )}
           </div>
-          <Link
-            href="/import"
-            className="self-start rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            Import CSV
-          </Link>
+          <div className="flex gap-3 self-start">
+            <button
+              onClick={() => {
+                const rows = properties.map((p) => ({
+                  address: p.address,
+                  city: p.city,
+                  state: p.state,
+                  zip: p.zip,
+                  propertyType: p.propertyType ?? '',
+                  estimatedValue: p.estimatedValue ?? '',
+                  equityPercent: p.equityPercent ?? '',
+                  debtOwed: p.debtOwed ?? '',
+                  interestRate: p.interestRate ?? '',
+                  daysOnMarket: p.daysOnMarket ?? '',
+                  owner: p.ownershipName ?? '',
+                  dataFreshness: p.dataFreshnessDate,
+                }));
+                downloadCsv(rows, `properties-export-${new Date().toISOString().slice(0, 10)}.csv`);
+              }}
+              disabled={properties.length === 0}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-40"
+            >
+              Export CSV
+            </button>
+            <Link
+              href="/import"
+              className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              Import CSV
+            </Link>
+          </div>
         </div>
 
         {/* ── Search Bar ──────────────────────────────────────────────────── */}
