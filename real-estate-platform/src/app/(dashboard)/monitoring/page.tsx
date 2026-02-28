@@ -25,12 +25,34 @@ const alertTypeLabels: Record<string, string> = {
   SENDER_SCORE_LOW: 'Sender Score Low',
 };
 
+const alertRemediation: Record<string, string[]> = {
+  BOUNCE_RATE_HIGH: [
+    'Verify email addresses before sending (use email validation service)',
+    'Remove hard-bounced addresses from your contact lists',
+    'Consider re-importing your property data with updated owner emails',
+    'Pause bulk sends until bounce rate drops below 5%',
+  ],
+  COMPLAINT_RATE_HIGH: [
+    'Review your email content for misleading subject lines or content',
+    'Ensure you have an easy-to-find unsubscribe link in all emails',
+    'Consider reducing send frequency to contacts who have not engaged',
+    'Check that your "from" address matches your brand identity',
+  ],
+  SENDER_SCORE_LOW: [
+    'Reduce email volume temporarily to let your reputation recover',
+    'Focus on sending to engaged contacts only (opened/clicked before)',
+    'Ensure SPF, DKIM, and DMARC records are properly configured',
+    'Monitor bounce and complaint rates — they directly impact sender score',
+  ],
+};
+
 export default function MonitoringPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [healthStatus, setHealthStatus] = useState<string>('');
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [alertsLoading, setAlertsLoading] = useState(true);
+  const [showAcknowledged, setShowAcknowledged] = useState(false);
 
   useEffect(() => {
     fetch('/api/monitoring/status')
@@ -63,6 +85,11 @@ export default function MonitoringPage() {
   };
 
   const unacknowledgedCount = alerts.filter((a) => !a.acknowledged).length;
+
+  const acknowledgeAll = async () => {
+    const unacked = alerts.filter((a) => !a.acknowledged);
+    await Promise.all(unacked.map((a) => acknowledgeAlert(a.id)));
+  };
 
   if (loading) {
     return (
@@ -168,13 +195,35 @@ export default function MonitoringPage() {
 
       {/* Alerts section */}
       <div>
-        <div className="flex items-center gap-3 mb-3">
-          <h2 className="text-xl font-bold text-gray-900">Alerts</h2>
-          {unacknowledgedCount > 0 && (
-            <span className="bg-red-100 text-red-700 text-sm px-2 py-0.5 rounded-full font-medium">
-              {unacknowledgedCount} unacknowledged
-            </span>
-          )}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-900">Alerts</h2>
+            {unacknowledgedCount > 0 && (
+              <span className="bg-red-100 text-red-700 text-sm px-2 py-0.5 rounded-full font-medium">
+                {unacknowledgedCount} unacknowledged
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {unacknowledgedCount > 1 && (
+              <button
+                onClick={acknowledgeAll}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                Acknowledge All
+              </button>
+            )}
+            <button
+              onClick={() => setShowAcknowledged((v) => !v)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                showAcknowledged
+                  ? 'bg-gray-100 text-gray-700 border-gray-300'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {showAcknowledged ? 'Hide Acknowledged' : 'Show Acknowledged'}
+            </button>
+          </div>
         </div>
 
         {alertsLoading ? (
@@ -185,42 +234,58 @@ export default function MonitoringPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {alerts.map((alert) => (
-              <div
-                key={alert.id}
-                className={`border rounded-lg p-4 ${
-                  alert.acknowledged
-                    ? 'border-gray-200 bg-gray-50 opacity-60'
-                    : 'border-yellow-200 bg-yellow-50'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">
-                      {alertTypeLabels[alert.alertType] ?? alert.alertType}
-                    </p>
-                    <p className="text-sm text-gray-700 mt-0.5">{alert.message}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(alert.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
-                    </p>
+            {alerts.filter((a) => showAcknowledged || !a.acknowledged).map((alert) => {
+              const steps = alertRemediation[alert.alertType];
+              return (
+                <div
+                  key={alert.id}
+                  className={`border rounded-lg p-4 ${
+                    alert.acknowledged
+                      ? 'border-gray-200 bg-gray-50 opacity-60'
+                      : 'border-yellow-200 bg-yellow-50'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">
+                        {alertTypeLabels[alert.alertType] ?? alert.alertType}
+                      </p>
+                      <p className="text-sm text-gray-700 mt-0.5">{alert.message}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(alert.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    {!alert.acknowledged && (
+                      <button
+                        onClick={() => acknowledgeAlert(alert.id)}
+                        className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-2 py-1 rounded ml-4 whitespace-nowrap shrink-0"
+                      >
+                        Acknowledge
+                      </button>
+                    )}
                   </div>
-                  {!alert.acknowledged && (
-                    <button
-                      onClick={() => acknowledgeAlert(alert.id)}
-                      className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-2 py-1 rounded ml-4 whitespace-nowrap"
-                    >
-                      Acknowledge
-                    </button>
+                  {steps && !alert.acknowledged && (
+                    <div className="mt-3 pt-3 border-t border-yellow-200">
+                      <p className="text-xs font-semibold text-gray-700 mb-1.5">Recommended Actions:</p>
+                      <ul className="space-y-1">
+                        {steps.map((step, i) => (
+                          <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                            <span className="text-yellow-600 mt-0.5 shrink-0">&#x2022;</span>
+                            {step}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
