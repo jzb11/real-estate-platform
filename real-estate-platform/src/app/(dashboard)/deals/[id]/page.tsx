@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DealStatus } from '@prisma/client';
 import DataFreshnessAlert from '@/components/ui/DataFreshnessAlert';
@@ -162,6 +163,7 @@ export default function DealDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
 
   const [deal, setDeal] = useState<DealDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -266,6 +268,21 @@ export default function DealDetailPage({
       alert('Network error — could not reject deal');
     } finally {
       setIsTransitioning(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deal || !confirm('Permanently delete this deal and all its history? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`/api/deals/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Delete failed' }));
+        alert(err.error ?? 'Delete failed');
+        return;
+      }
+      router.push('/pipeline');
+    } catch {
+      alert('Network error — could not delete deal');
     }
   }
 
@@ -968,6 +985,13 @@ export default function DealDetailPage({
                 className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
               >
                 {copied ? 'Copied!' : 'Copy Summary'}
+              </button>
+              <button
+                onClick={handleDelete}
+                className="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-500 shadow-sm hover:bg-red-50 transition-colors"
+                title="Permanently delete this deal"
+              >
+                Delete
               </button>
               <Link
                 href="/pipeline"

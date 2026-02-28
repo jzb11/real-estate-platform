@@ -238,3 +238,44 @@ export async function PATCH(
 
   return NextResponse.json(updatedDeal);
 }
+
+/**
+ * DELETE /api/deals/:id
+ * Hard-deletes a deal and its associated history/rule evaluations.
+ * Only the owning user can delete. Returns 204 No Content on success.
+ */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { userId: clerkId } = await auth();
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { clerkId } });
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
+
+  const { id } = await params;
+
+  const deal = await prisma.deal.findFirst({
+    where: { id, userId: user.id },
+  });
+
+  if (!deal) {
+    return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+  }
+
+  // Delete deal and all related records in a transaction
+  await prisma.$transaction([
+    prisma.dealHistory.deleteMany({ where: { dealId: id } }),
+    prisma.ruleEvaluationLog.deleteMany({ where: { dealId: id } }),
+    prisma.followUpScheduled.deleteMany({ where: { dealId: id } }),
+    prisma.offeredDeal.deleteMany({ where: { dealId: id } }),
+    prisma.deal.delete({ where: { id } }),
+  ]);
+
+  return new NextResponse(null, { status: 204 });
+}
