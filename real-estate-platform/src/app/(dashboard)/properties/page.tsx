@@ -502,9 +502,9 @@ export default function PropertiesPage() {
                     const isCreating = creatingDealFor === property.id;
 
                     return (
-                      <tr key={property.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={property.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => window.location.href = `/properties/${property.id}`}>
                         <td className="px-4 py-3">
-                          <p className="font-medium text-gray-900 leading-tight">{property.address}</p>
+                          <Link href={`/properties/${property.id}`} className="font-medium text-gray-900 leading-tight hover:text-blue-600">{property.address}</Link>
                           {property.ownershipName && (
                             <p className="text-xs text-gray-400 mt-0.5">{property.ownershipName}</p>
                           )}
