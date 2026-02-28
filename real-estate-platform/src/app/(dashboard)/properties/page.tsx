@@ -47,6 +47,7 @@ interface FilterState {
   city: string;
   state: string;
   propertyType: string;
+  distress: string[];
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -59,7 +60,18 @@ const EMPTY_FILTERS: FilterState = {
   city: '',
   state: '',
   propertyType: '',
+  distress: [],
 };
+
+const DISTRESS_OPTIONS = [
+  { key: 'foreclosure', label: 'Foreclosure' },
+  { key: 'preforeclosure', label: 'Pre-Foreclosure' },
+  { key: 'taxLien', label: 'Tax Lien' },
+  { key: 'probate', label: 'Probate' },
+  { key: 'divorce', label: 'Divorce' },
+  { key: 'vacant', label: 'Vacant' },
+  { key: 'auction', label: 'Auction' },
+];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +103,7 @@ function buildSearchParams(filters: FilterState, page: number): string {
   if (filters.city) params.set('city', filters.city);
   if (filters.state) params.set('state', filters.state);
   if (filters.propertyType) params.set('propertyType', filters.propertyType);
+  if (filters.distress.length > 0) params.set('distress', filters.distress.join(','));
   params.set('page', String(page));
   params.set('limit', '50');
   return params.toString();
@@ -211,6 +224,7 @@ export default function PropertiesPage() {
       city: '',
       state: '',
       propertyType: '',
+      distress: [],
     };
     setFilters(newFilters);
     setPage(1);
@@ -310,7 +324,10 @@ export default function PropertiesPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  const hasActiveFilters = Object.values(filters).some((v) => v !== '');
+  const hasActiveFilters = Object.entries(filters).some(([k, v]) => {
+    if (k === 'distress') return (v as string[]).length > 0;
+    return v !== '';
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -448,6 +465,37 @@ export default function PropertiesPage() {
                 placeholder="e.g. 7.5"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+            </div>
+          </div>
+
+          {/* Distress signal filter chips */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-500 mb-2">Distress Signals</label>
+            <div className="flex flex-wrap gap-2">
+              {DISTRESS_OPTIONS.map((opt) => {
+                const isActive = filters.distress.includes(opt.key);
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => {
+                      setFilters((prev) => ({
+                        ...prev,
+                        distress: isActive
+                          ? prev.distress.filter((d) => d !== opt.key)
+                          : [...prev.distress, opt.key],
+                      }));
+                    }}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      isActive
+                        ? 'border-red-300 bg-red-100 text-red-800'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

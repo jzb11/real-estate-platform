@@ -38,6 +38,7 @@ export interface PropertySearchFilters {
   city?: string;
   state?: string;
   propertyType?: string;
+  distressSignals?: string[]; // filter for specific distress flags (foreclosure, taxLien, etc.)
 }
 
 export interface SavedSearchFilter {

@@ -82,6 +82,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const propertyType = searchParams.get('propertyType');
   if (propertyType) queryFilters.propertyType = propertyType;
 
+  const distressParam = searchParams.get('distress');
+  if (distressParam) queryFilters.distressSignals = distressParam.split(',').map((s) => s.trim()).filter(Boolean);
+
   // Free-text search query (searches address, city, owner name)
   const searchQuery = searchParams.get('q')?.trim();
 

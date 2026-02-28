@@ -17,10 +17,21 @@ interface BulkSendResult {
   results: { dealId: string; success: boolean; error?: string }[];
 }
 
+const OFFER_STAGES = ['QUALIFIED', 'ANALYZING', 'SOURCED', 'UNDER_CONTRACT'] as const;
+type OfferStage = typeof OFFER_STAGES[number];
+
+const STAGE_LABELS: Record<OfferStage, string> = {
+  QUALIFIED: 'Qualified',
+  ANALYZING: 'Analyzing',
+  SOURCED: 'Sourced',
+  UNDER_CONTRACT: 'Under Contract',
+};
+
 export default function OffersPage() {
   const [deals, setDeals] = useState<DealWithProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [stageFilter, setStageFilter] = useState<OfferStage>('QUALIFIED');
 
   // Selection state
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -34,7 +45,9 @@ export default function OffersPage() {
   const [bulkResult, setBulkResult] = useState<BulkSendResult | null>(null);
 
   useEffect(() => {
-    fetch('/api/deals?status=QUALIFIED')
+    setLoading(true);
+    setSelected(new Set());
+    fetch(`/api/deals?status=${stageFilter}`)
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load deals (${res.status})`);
         return res.json();
@@ -42,7 +55,7 @@ export default function OffersPage() {
       .then((data: { deals: DealWithProperty[] }) => setDeals(data.deals ?? []))
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [stageFilter]);
 
   function toggleSelect(dealId: string) {
     setSelected((prev) => {
@@ -151,11 +164,11 @@ export default function OffersPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Qualified Deals</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Send Offers</h1>
             <p className="mt-1 text-sm text-gray-500">
-              {deals.length} deal{deals.length !== 1 ? 's' : ''} ready for offers
+              {deals.length} deal{deals.length !== 1 ? 's' : ''} in {STAGE_LABELS[stageFilter]}
               {selected.size > 0 && (
                 <span className="text-blue-600 font-medium ml-2">
                   ({selected.size} selected)
@@ -179,6 +192,23 @@ export default function OffersPage() {
               View Tracking
             </Link>
           </div>
+        </div>
+
+        {/* Stage filter tabs */}
+        <div className="mb-6 flex gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1">
+          {OFFER_STAGES.map((stage) => (
+            <button
+              key={stage}
+              onClick={() => setStageFilter(stage)}
+              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                stageFilter === stage
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {STAGE_LABELS[stage]}
+            </button>
+          ))}
         </div>
 
         {deals.length === 0 ? (

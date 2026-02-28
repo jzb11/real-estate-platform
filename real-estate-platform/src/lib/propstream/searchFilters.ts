@@ -57,6 +57,13 @@ export function buildPropertyFilter(
     where.propertyType = { equals: filters.propertyType, mode: 'insensitive' };
   }
 
+  // Distress signal filters — require specific JSONB keys to be true
+  if (filters.distressSignals && filters.distressSignals.length > 0) {
+    where.AND = filters.distressSignals.map((signal) => ({
+      distressSignals: { path: [signal], equals: true },
+    }));
+  }
+
   return where;
 }
 
