@@ -60,23 +60,35 @@ interface DealCardProps {
   deal: DealWithPipeline;
   onTransition: (dealId: string, targetState: DealStatus) => void;
   isTransitioning?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (dealId: string) => void;
 }
 
-export default function DealCard({ deal, onTransition, isTransitioning = false }: DealCardProps) {
+export default function DealCard({ deal, onTransition, isTransitioning = false, selected, onToggleSelect }: DealCardProps) {
   const nextStage = NEXT_STAGE[deal.status];
   const nextLabel = nextStage ? NEXT_STAGE_LABELS[deal.status] : undefined;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm hover:shadow-md transition-shadow">
-      {/* Address */}
-      <Link href={`/deals/${deal.id}`} className="group block">
+    <div className={`rounded-lg border ${selected ? 'border-blue-400 bg-blue-50/30' : 'border-gray-200 bg-white'} p-3 shadow-sm hover:shadow-md transition-shadow`}>
+      {/* Selection + Address */}
+      <div className="flex items-start gap-2">
+        {onToggleSelect && (
+          <input
+            type="checkbox"
+            checked={selected ?? false}
+            onChange={() => onToggleSelect(deal.id)}
+            className="mt-1 h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 shrink-0"
+          />
+        )}
+        <Link href={`/deals/${deal.id}`} className="group block min-w-0 flex-1">
         <p className="font-semibold text-gray-900 text-sm leading-tight group-hover:text-blue-600 transition-colors">
           {deal.property.address}
         </p>
         <p className="text-xs text-gray-500 mt-0.5">
           {deal.property.city}, {deal.property.state}
         </p>
-      </Link>
+        </Link>
+      </div>
 
       {/* Property quick stats */}
       {(deal.property.yearBuilt || deal.property.squareFootage || (deal.property.unitCount && deal.property.unitCount > 1)) && (

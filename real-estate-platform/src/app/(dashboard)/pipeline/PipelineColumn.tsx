@@ -26,6 +26,8 @@ interface PipelineColumnProps {
   deals: DealWithPipeline[];
   onTransition: (dealId: string, targetState: DealStatus) => void;
   transitioningDealId?: string | null;
+  selectedDeals?: Set<string>;
+  onToggleSelect?: (dealId: string) => void;
 }
 
 export default function PipelineColumn({
@@ -33,6 +35,8 @@ export default function PipelineColumn({
   deals,
   onTransition,
   transitioningDealId,
+  selectedDeals,
+  onToggleSelect,
 }: PipelineColumnProps) {
   const headerClass = COLUMN_HEADER_CLASSES[stage];
   const label = COLUMN_LABELS[stage];
@@ -62,6 +66,8 @@ export default function PipelineColumn({
               deal={deal}
               onTransition={onTransition}
               isTransitioning={transitioningDealId === deal.id}
+              selected={selectedDeals?.has(deal.id)}
+              onToggleSelect={onToggleSelect}
             />
           ))
         )}

@@ -257,6 +257,44 @@ export default function PipelinePage() {
           </div>
         )}
 
+        {/* Bulk action bar */}
+        {!isLoading && !error && !qualifiedOnly && selectedDeals.size > 0 && (
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+            <span className="text-sm font-medium text-blue-800">
+              {selectedDeals.size} deal{selectedDeals.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex gap-2 ml-auto">
+              <button
+                onClick={() => handleBulkTransition('ANALYZING')}
+                disabled={bulkTransitioning}
+                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {bulkTransitioning ? 'Moving...' : 'Move to Analyzing'}
+              </button>
+              <button
+                onClick={() => handleBulkTransition('QUALIFIED')}
+                disabled={bulkTransitioning}
+                className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {bulkTransitioning ? 'Moving...' : 'Move to Qualified'}
+              </button>
+              <button
+                onClick={() => handleBulkTransition('REJECTED')}
+                disabled={bulkTransitioning}
+                className="rounded border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => setSelectedDeals(new Set())}
+                className="rounded border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Full Kanban board */}
         {!isLoading && !error && !qualifiedOnly && data && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 overflow-x-auto">
@@ -267,6 +305,8 @@ export default function PipelinePage() {
                 deals={getFilteredDeals(stage)}
                 onTransition={handleTransition}
                 transitioningDealId={transitioningDealId}
+                selectedDeals={selectedDeals}
+                onToggleSelect={toggleDealSelection}
               />
             ))}
           </div>
