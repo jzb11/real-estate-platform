@@ -86,7 +86,7 @@ export default function OffersPage() {
       .filter((d) => selected.has(d.id))
       .map((d) => ({
         dealId: d.id,
-        recipientEmail: '',
+        recipientEmail: d.property.ownershipEmail ?? '',
         recipientName: d.property.ownershipName ?? '',
       }));
     setBulkEntries(entries);

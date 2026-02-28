@@ -16,9 +16,12 @@ export interface DealWithPipeline {
     city: string;
     state: string;
     estimatedValue: number | null;
+    equityPercent: number | null;
     yearBuilt: number | null;
     squareFootage: number | null;
     unitCount: number | null;
+    ownershipName: string | null;
+    ownershipEmail: string | null;
     dataFreshnessDate: string | Date;
   };
   history: Array<{

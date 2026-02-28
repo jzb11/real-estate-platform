@@ -122,9 +122,12 @@ export default function PipelinePage() {
           state: deal.property.state,
           score: deal.qualificationScore,
           estimatedValue: deal.property.estimatedValue ?? null,
+          equityPercent: deal.property.equityPercent ?? null,
           yearBuilt: deal.property.yearBuilt ?? null,
           sqft: deal.property.squareFootage ?? null,
           units: deal.property.unitCount ?? null,
+          owner: deal.property.ownershipName ?? null,
+          ownerEmail: deal.property.ownershipEmail ?? null,
         });
       }
     }

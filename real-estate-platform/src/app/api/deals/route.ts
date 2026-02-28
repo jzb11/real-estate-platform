@@ -18,9 +18,12 @@ const PROPERTY_SELECT = {
   city: true,
   state: true,
   estimatedValue: true,
+  equityPercent: true,
   yearBuilt: true,
   squareFootage: true,
   unitCount: true,
+  ownershipName: true,
+  ownershipEmail: true,
   dataFreshnessDate: true,
 };
 

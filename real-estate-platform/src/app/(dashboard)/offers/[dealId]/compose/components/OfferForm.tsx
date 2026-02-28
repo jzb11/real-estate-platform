@@ -32,8 +32,8 @@ interface PreviewDraft {
 }
 
 export function OfferForm({ deal, sequences, onSubmit, loading }: OfferFormProps) {
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [recipientName, setRecipientName] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState(deal.property.ownershipEmail ?? '');
+  const [recipientName, setRecipientName] = useState(deal.property.ownershipName ?? '');
   const [repairCosts, setRepairCosts] = useState(0);
   const [sequenceId, setSequenceId] = useState('');
 
