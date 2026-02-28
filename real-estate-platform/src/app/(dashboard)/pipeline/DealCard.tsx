@@ -101,13 +101,32 @@ export default function DealCard({ deal, onTransition, isTransitioning = false }
         )}
       </div>
 
-      {/* Estimated value */}
-      {deal.property.estimatedValue != null && (
-        <p className="mt-1.5 text-xs text-gray-600">
-          ARV:{' '}
-          <span className="font-medium text-gray-800">
-            ${deal.property.estimatedValue.toLocaleString()}
-          </span>
+      {/* Estimated value & equity */}
+      {(deal.property.estimatedValue != null || deal.property.equityPercent != null) && (
+        <div className="mt-1.5 flex gap-3 text-xs text-gray-600">
+          {deal.property.estimatedValue != null && (
+            <span>
+              ARV:{' '}
+              <span className="font-medium text-gray-800">
+                ${deal.property.estimatedValue.toLocaleString()}
+              </span>
+            </span>
+          )}
+          {deal.property.equityPercent != null && (
+            <span>
+              Equity:{' '}
+              <span className={`font-medium ${deal.property.equityPercent >= 30 ? 'text-green-700' : 'text-gray-800'}`}>
+                {deal.property.equityPercent.toFixed(0)}%
+              </span>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Owner info */}
+      {deal.property.ownershipName && (
+        <p className="mt-1 text-xs text-gray-400 truncate" title={deal.property.ownershipName}>
+          Owner: {deal.property.ownershipName}
         </p>
       )}
 
