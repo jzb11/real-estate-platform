@@ -82,6 +82,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const propertyType = searchParams.get('propertyType');
   if (propertyType) queryFilters.propertyType = propertyType;
 
+  // Free-text search query (searches address, city, owner name)
+  const searchQuery = searchParams.get('q')?.trim();
+
   // If filterId provided, load saved filter and merge with query params
   let baseFilters: PropertySearchFilters = {};
   const filterId = searchParams.get('filterId');
@@ -107,12 +110,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // User-scope: properties are accessed through deals (Deal has userId).
   // Query properties that the user has at least one deal on.
   // This enforces multi-tenant isolation — no cross-user data leakage.
-  const userWhere = {
+  const userWhere: Record<string, unknown> = {
     ...filterWhere,
     deals: {
       some: { userId: user.id },
     },
   };
+
+  // Apply free-text search across address, city, and owner name
+  if (searchQuery) {
+    userWhere.OR = [
+      { address: { contains: searchQuery, mode: 'insensitive' } },
+      { city: { contains: searchQuery, mode: 'insensitive' } },
+      { ownershipName: { contains: searchQuery, mode: 'insensitive' } },
+      { zip: { startsWith: searchQuery } },
+    ];
+  }
 
   // Execute count + data queries in parallel
   const [total, rawProperties] = await Promise.all([

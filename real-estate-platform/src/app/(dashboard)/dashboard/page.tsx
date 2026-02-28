@@ -28,6 +28,15 @@ interface PipelineData {
   total: number;
 }
 
+interface DashboardStats {
+  totalDeals: number;
+  dealsByStatus: Record<string, number>;
+  propertiesCount: number;
+  offersCount: number;
+  closedDeals: number;
+  conversionRate: number;
+}
+
 interface RecentActivity {
   id: string;
   dealTitle: string;
@@ -52,22 +61,30 @@ function formatTimeAgo(date: string): string {
 export default function DashboardPage() {
   const { user } = useUser();
   const [data, setData] = useState<PipelineData | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/deals', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (json) setData(json);
+    Promise.all([
+      fetch('/api/deals', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
+      fetch('/api/dashboard/stats', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([dealsJson, statsJson]) => {
+        if (dealsJson) setData(dealsJson);
+        if (statsJson) setStats(statsJson);
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Compute stats
-  const totalDeals = data?.total ?? 0;
-  const qualifiedDeals = data?.pipeline?.QUALIFIED?.length ?? 0;
-  const underContract = data?.pipeline?.UNDER_CONTRACT?.length ?? 0;
+  // Compute stats from pipeline data (fallback if stats API not available)
+  const totalDeals = stats?.totalDeals ?? data?.total ?? 0;
+  const qualifiedDeals = stats?.dealsByStatus?.QUALIFIED ?? data?.pipeline?.QUALIFIED?.length ?? 0;
+  const underContract = stats?.dealsByStatus?.UNDER_CONTRACT ?? data?.pipeline?.UNDER_CONTRACT?.length ?? 0;
+  const closedDeals = stats?.closedDeals ?? stats?.dealsByStatus?.CLOSED ?? 0;
+  const propertiesCount = stats?.propertiesCount ?? 0;
+  const offersCount = stats?.offersCount ?? 0;
+  const conversionRate = stats?.conversionRate ?? 0;
 
   // Collect recent activity across all deals (last 5 history entries)
   const recentActivity: RecentActivity[] = [];
@@ -91,7 +108,7 @@ export default function DashboardPage() {
   recentActivity.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
-  const topActivity = recentActivity.slice(0, 5);
+  const topActivity = recentActivity.slice(0, 8);
 
   const firstName = user?.firstName ?? user?.username ?? 'there';
 
@@ -111,40 +128,69 @@ export default function DashboardPage() {
           <UserButton />
         </div>
 
-        {/* Stats row */}
+        {/* Stats grid */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            value={totalDeals}
+            label="Total Deals"
+            loading={isLoading}
+            href="/pipeline"
+            linkText="View pipeline"
+          />
+          <StatCard
+            value={qualifiedDeals}
+            label="Qualified"
+            loading={isLoading}
+            href="/pipeline?qualified=true"
+            linkText="View qualified"
+            variant="green"
+          />
+          <StatCard
+            value={underContract}
+            label="Under Contract"
+            loading={isLoading}
+            variant="yellow"
+          />
+          <StatCard
+            value={closedDeals}
+            label="Closed"
+            loading={isLoading}
+            variant="blue"
+          />
+        </div>
+
+        {/* Secondary stats */}
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             {isLoading ? (
-              <div className="h-8 w-12 animate-pulse rounded bg-gray-200"></div>
+              <div className="h-7 w-12 animate-pulse rounded bg-gray-200"></div>
             ) : (
-              <p className="text-3xl font-bold text-gray-900">{totalDeals}</p>
+              <p className="text-2xl font-bold text-gray-900">{propertiesCount.toLocaleString()}</p>
             )}
-            <p className="mt-1 text-sm text-gray-500">Total Deals</p>
-            <Link href="/pipeline" className="mt-3 block text-xs text-blue-600 hover:underline">
-              View pipeline &rarr;
+            <p className="mt-1 text-sm text-gray-500">Properties Tracked</p>
+            <Link href="/properties" className="mt-2 block text-xs text-blue-600 hover:underline">
+              Browse properties &rarr;
             </Link>
           </div>
-          <div className="rounded-xl border border-green-200 bg-green-50 p-5 shadow-sm">
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             {isLoading ? (
-              <div className="h-8 w-12 animate-pulse rounded bg-green-200"></div>
+              <div className="h-7 w-12 animate-pulse rounded bg-gray-200"></div>
             ) : (
-              <p className="text-3xl font-bold text-green-800">{qualifiedDeals}</p>
+              <p className="text-2xl font-bold text-gray-900">{offersCount.toLocaleString()}</p>
             )}
-            <p className="mt-1 text-sm text-green-700">Qualified</p>
-            <Link
-              href="/pipeline?qualified=true"
-              className="mt-3 block text-xs text-green-700 hover:underline"
-            >
-              View qualified &rarr;
+            <p className="mt-1 text-sm text-gray-500">Offers Sent</p>
+            <Link href="/offers/tracking" className="mt-2 block text-xs text-blue-600 hover:underline">
+              View tracking &rarr;
             </Link>
           </div>
-          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             {isLoading ? (
-              <div className="h-8 w-12 animate-pulse rounded bg-yellow-200"></div>
+              <div className="h-7 w-12 animate-pulse rounded bg-gray-200"></div>
             ) : (
-              <p className="text-3xl font-bold text-yellow-800">{underContract}</p>
+              <p className="text-2xl font-bold text-gray-900">{conversionRate}%</p>
             )}
-            <p className="mt-1 text-sm text-yellow-700">Under Contract</p>
+            <p className="mt-1 text-sm text-gray-500">Conversion Rate</p>
+            <p className="mt-2 text-xs text-gray-400">Deals sourced to closed</p>
           </div>
         </div>
 
@@ -156,7 +202,13 @@ export default function DashboardPage() {
               href="/import"
               className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
             >
-              Import CSV
+              Import Properties
+            </Link>
+            <Link
+              href="/offers"
+              className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 transition-colors"
+            >
+              Send Offers
             </Link>
             <Link
               href="/pipeline"
@@ -169,6 +221,12 @@ export default function DashboardPage() {
               className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
             >
               Browse Properties
+            </Link>
+            <Link
+              href="/rules"
+              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              Manage Rules
             </Link>
           </div>
         </div>
@@ -222,6 +280,45 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatCard({
+  value,
+  label,
+  loading,
+  href,
+  linkText,
+  variant,
+}: {
+  value: number;
+  label: string;
+  loading: boolean;
+  href?: string;
+  linkText?: string;
+  variant?: 'green' | 'yellow' | 'blue';
+}) {
+  const styles = {
+    green: { border: 'border-green-200', bg: 'bg-green-50', text: 'text-green-800', link: 'text-green-700' },
+    yellow: { border: 'border-yellow-200', bg: 'bg-yellow-50', text: 'text-yellow-800', link: 'text-yellow-700' },
+    blue: { border: 'border-blue-200', bg: 'bg-blue-50', text: 'text-blue-800', link: 'text-blue-700' },
+  };
+  const s = variant ? styles[variant] : { border: 'border-gray-200', bg: 'bg-white', text: 'text-gray-900', link: 'text-blue-600' };
+
+  return (
+    <div className={`rounded-xl border ${s.border} ${s.bg} p-5 shadow-sm`}>
+      {loading ? (
+        <div className="h-8 w-12 animate-pulse rounded bg-gray-200"></div>
+      ) : (
+        <p className={`text-3xl font-bold ${s.text}`}>{value}</p>
+      )}
+      <p className={`mt-1 text-sm ${variant ? s.link : 'text-gray-500'}`}>{label}</p>
+      {href && linkText && (
+        <Link href={href} className={`mt-3 block text-xs ${s.link} hover:underline`}>
+          {linkText} &rarr;
+        </Link>
+      )}
     </div>
   );
 }
