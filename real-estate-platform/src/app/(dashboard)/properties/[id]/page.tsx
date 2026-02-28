@@ -29,6 +29,13 @@ interface PropertyDetail {
   debtOwed: number | null;
   interestRate: number | null;
   daysOnMarket: number | null;
+  yearBuilt: number | null;
+  squareFootage: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  unitCount: number | null;
+  lotSize: number | null;
+  annualPropertyTax: number | null;
   distressSignals: Record<string, boolean>;
   dataSource: string;
   dataFreshnessDate: string;
@@ -164,6 +171,37 @@ export default function PropertyDetailPage() {
           <StatCard label="Last Sale Date" value={fmtDate(property.lastSaleDate)} />
           <StatCard label="Tax Assessed" value={fmt(property.taxAssessedValue)} />
           <StatCard label="Days on Market" value={property.daysOnMarket != null ? String(property.daysOnMarket) : '--'} />
+        </div>
+
+        {/* Physical Details */}
+        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Physical Details</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-gray-500">Year Built</p>
+              <p className="text-sm font-medium text-gray-900">{property.yearBuilt ?? '--'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Sq Ft</p>
+              <p className="text-sm font-medium text-gray-900">{property.squareFootage ? property.squareFootage.toLocaleString() : '--'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Beds / Baths</p>
+              <p className="text-sm font-medium text-gray-900">{property.bedrooms ?? '--'} / {property.bathrooms ?? '--'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Units</p>
+              <p className="text-sm font-medium text-gray-900">{property.unitCount ?? '1'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Lot Size</p>
+              <p className="text-sm font-medium text-gray-900">{property.lotSize ? property.lotSize.toLocaleString() + ' sq ft' : '--'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Annual Tax</p>
+              <p className="text-sm font-medium text-gray-900">{fmt(property.annualPropertyTax)}</p>
+            </div>
+          </div>
         </div>
 
         {/* Owner info */}

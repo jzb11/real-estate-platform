@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { OfferedDeal } from '@prisma/client';
 import { OfferCard } from '@/components/ui/OfferCard';
 
@@ -78,9 +79,9 @@ function TrackingContent() {
           <p className="text-2xl font-bold text-green-700">{stats.opened}</p>
           <p className="text-xs text-gray-500">{openRate}% rate</p>
         </div>
-        <div className="bg-green-50 border border-green-100 p-4 rounded-lg">
+        <div className="bg-purple-50 border border-purple-100 p-4 rounded-lg">
           <p className="text-sm text-gray-600">Clicked</p>
-          <p className="text-2xl font-bold text-green-700">{stats.clicked}</p>
+          <p className="text-2xl font-bold text-purple-700">{stats.clicked}</p>
         </div>
         <div className="bg-red-50 border border-red-100 p-4 rounded-lg">
           <p className="text-sm text-gray-600">Bounced</p>
@@ -119,9 +120,12 @@ function TrackingContent() {
           {offers.map((offer) => (
             <div key={offer.id}>
               {offer.deal && (
-                <p className="text-xs text-gray-500 mb-1 ml-1">
-                  {offer.deal.property.address}, {offer.deal.property.city}
-                </p>
+                <Link
+                  href={`/deals/${offer.dealId}`}
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline mb-1 ml-1 block"
+                >
+                  {offer.deal.property.address}, {offer.deal.property.city} &rarr;
+                </Link>
               )}
               <OfferCard offer={offer} />
             </div>

@@ -29,6 +29,7 @@ export default function PipelinePage() {
   const [error, setError] = useState<string | null>(null);
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
   const [transitioningDealId, setTransitioningDealId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchDeals = useCallback(async () => {
     try {
@@ -75,9 +76,25 @@ export default function PipelinePage() {
 
   const [showRejected, setShowRejected] = useState(false);
 
+  // Search filter — applied client-side across all stages
+  const searchLower = searchQuery.toLowerCase().trim();
+  function matchesSearch(deal: DealWithPipeline): boolean {
+    if (!searchLower) return true;
+    return (
+      deal.property.address.toLowerCase().includes(searchLower) ||
+      deal.property.city.toLowerCase().includes(searchLower) ||
+      deal.title.toLowerCase().includes(searchLower)
+    );
+  }
+
+  // Filtered pipeline data
+  function getFilteredDeals(stage: DealStatus): DealWithPipeline[] {
+    return (data?.pipeline[stage] ?? []).filter(matchesSearch);
+  }
+
   // Qualified-only flat list
-  const qualifiedDeals = data?.pipeline?.QUALIFIED ?? [];
-  const rejectedDeals = data?.pipeline?.REJECTED ?? [];
+  const qualifiedDeals = getFilteredDeals('QUALIFIED');
+  const rejectedDeals = getFilteredDeals('REJECTED');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -91,6 +108,18 @@ export default function PipelinePage() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            <div className="relative">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search deals..."
+                className="w-48 rounded-lg border border-gray-200 bg-white pl-8 pr-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
             <Link
               href="/import"
               className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
@@ -169,7 +198,7 @@ export default function PipelinePage() {
               <PipelineColumn
                 key={stage}
                 stage={stage}
-                deals={data.pipeline[stage] ?? []}
+                deals={getFilteredDeals(stage)}
                 onTransition={handleTransition}
                 transitioningDealId={transitioningDealId}
               />

@@ -16,6 +16,7 @@ export default function SequencesPage() {
   const [createDesc, setCreateDesc] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadSequences = () => {
     setLoading(true);
@@ -60,6 +61,24 @@ export default function SequencesPage() {
     }
   };
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Delete sequence "${name}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/sequences/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to delete' }));
+        alert(err.error ?? 'Failed to delete sequence');
+        return;
+      }
+      setSequences((prev) => prev.filter((s) => s.id !== id));
+    } catch {
+      alert('Network error — could not delete sequence');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4">
@@ -97,28 +116,36 @@ export default function SequencesPage() {
       ) : (
         <div className="space-y-3">
           {sequences.map((seq) => (
-            <Link key={seq.id} href={`/sequences/${seq.id}`}>
-              <div className="border border-gray-200 rounded-lg p-4 bg-white hover:border-blue-300 hover:bg-gray-50 cursor-pointer transition-colors">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-gray-900">{seq.name}</p>
-                    {seq.description && (
-                      <p className="text-sm text-gray-600 mt-0.5">{seq.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    {seq._count?.scheduledSequences != null && (
-                      <span>{seq._count.scheduledSequences} active</span>
-                    )}
-                    <span
-                      className={`px-2 py-0.5 rounded ${seq.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
-                    >
-                      {seq.enabled ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </div>
+            <div key={seq.id} className="border border-gray-200 rounded-lg p-4 bg-white hover:border-blue-300 hover:bg-gray-50 transition-colors">
+              <div className="flex justify-between items-start">
+                <Link href={`/sequences/${seq.id}`} className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">{seq.name}</p>
+                  {seq.description && (
+                    <p className="text-sm text-gray-600 mt-0.5">{seq.description}</p>
+                  )}
+                </Link>
+                <div className="flex items-center gap-3 text-xs text-gray-500 ml-3">
+                  {seq._count?.scheduledSequences != null && (
+                    <span>{seq._count.scheduledSequences} active</span>
+                  )}
+                  <span
+                    className={`px-2 py-0.5 rounded ${seq.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                  >
+                    {seq.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(seq.id, seq.name)}
+                    disabled={deletingId === seq.id}
+                    className="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    title="Delete sequence"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

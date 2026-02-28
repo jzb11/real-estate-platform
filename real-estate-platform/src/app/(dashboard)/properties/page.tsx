@@ -44,6 +44,9 @@ interface FilterState {
   maxDays: string;
   maxRate: string;
   q: string;
+  city: string;
+  state: string;
+  propertyType: string;
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -53,6 +56,9 @@ const EMPTY_FILTERS: FilterState = {
   maxDays: '',
   maxRate: '',
   q: '',
+  city: '',
+  state: '',
+  propertyType: '',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -82,6 +88,9 @@ function buildSearchParams(filters: FilterState, page: number): string {
   if (filters.maxDays) params.set('maxDays', filters.maxDays);
   if (filters.maxRate) params.set('maxRate', filters.maxRate);
   if (filters.q) params.set('q', filters.q);
+  if (filters.city) params.set('city', filters.city);
+  if (filters.state) params.set('state', filters.state);
+  if (filters.propertyType) params.set('propertyType', filters.propertyType);
   params.set('page', String(page));
   params.set('limit', '50');
   return params.toString();
@@ -199,6 +208,9 @@ export default function PropertiesPage() {
       maxDays: f.maxDaysOnMarket != null ? String(f.maxDaysOnMarket) : '',
       maxRate: f.maxInterestRate != null ? String(f.maxInterestRate) : '',
       q: '',
+      city: '',
+      state: '',
+      propertyType: '',
     };
     setFilters(newFilters);
     setPage(1);
@@ -339,6 +351,41 @@ export default function PropertiesPage() {
 
         {/* ── Filter Bar ─────────────────────────────────────────────────── */}
         <div className="mb-6 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+          {/* Location & Type filters */}
+          <div className="grid gap-3 sm:grid-cols-3 mb-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
+              <input
+                type="text"
+                value={filters.city}
+                onChange={(e) => handleFilterChange('city', e.target.value)}
+                placeholder="e.g. Miami"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">State</label>
+              <input
+                type="text"
+                value={filters.state}
+                onChange={(e) => handleFilterChange('state', e.target.value)}
+                placeholder="e.g. FL"
+                maxLength={2}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Property Type</label>
+              <input
+                type="text"
+                value={filters.propertyType}
+                onChange={(e) => handleFilterChange('propertyType', e.target.value)}
+                placeholder="e.g. Single Family"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          {/* Numeric filters */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Min Equity %</label>
