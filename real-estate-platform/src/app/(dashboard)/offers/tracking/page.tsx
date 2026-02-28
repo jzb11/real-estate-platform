@@ -97,12 +97,12 @@ function TrackingContent() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Resend failed' }));
-        alert(err.error ?? 'Resend failed');
+        toast(err.error ?? 'Resend failed', 'error');
         return;
       }
       loadOffers(statusFilter || undefined);
     } catch {
-      alert('Network error — could not resend offer');
+      toast('Network error — could not resend offer', 'error');
     }
   }
 

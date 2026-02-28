@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { downloadCsv } from '@/lib/exportCsv';
+import { useToast } from '@/components/ui/Toast';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ function buildSearchParams(filters: FilterState, page: number): string {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function PropertiesPage() {
+  const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -251,7 +253,7 @@ export default function PropertiesPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Failed to save filter' }));
-        alert(err.error ?? 'Failed to save filter');
+        toast(err.error ?? 'Failed to save filter', 'error');
         return;
       }
       const newFilter: SavedFilter = await res.json();
@@ -260,7 +262,7 @@ export default function PropertiesPage() {
       setShowSaveDialog(false);
       setSaveFilterName('');
     } catch {
-      alert('Network error — could not save filter');
+      toast('Network error — could not save filter', 'error');
     } finally {
       setIsSavingFilter(false);
     }
@@ -312,12 +314,12 @@ export default function PropertiesPage() {
           setDealCreatedFor((prev) => ({ ...prev, [property.id]: data.dealId }));
           return;
         }
-        alert(data.error ?? 'Failed to create deal');
+        toast(data.error ?? 'Failed to create deal', 'error');
         return;
       }
       setDealCreatedFor((prev) => ({ ...prev, [property.id]: data.id }));
     } catch {
-      alert('Network error — could not create deal');
+      toast('Network error — could not create deal', 'error');
     } finally {
       setCreatingDealFor(null);
     }

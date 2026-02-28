@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/Toast';
 
 interface Rule {
   id: string;
@@ -71,6 +72,7 @@ const CF_TYPE_COLORS: Record<string, string> = {
 };
 
 export default function RulesPage() {
+  const { toast } = useToast();
   const [tab, setTab] = useState<Tab>('qualification');
 
   // Qualification rules state
@@ -167,7 +169,7 @@ export default function RulesPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Failed to create rule');
+        toast(data.error ?? 'Failed to create rule', 'error');
         return;
       }
 
@@ -175,7 +177,7 @@ export default function RulesPage() {
       setRules((prev) => [...prev, rule]);
       resetForm();
     } catch {
-      alert('Network error');
+      toast('Network error', 'error');
     } finally {
       setSaving(false);
     }
@@ -251,7 +253,7 @@ export default function RulesPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Failed to create rule');
+        toast(data.error ?? 'Failed to create rule', 'error');
         return;
       }
 
@@ -259,7 +261,7 @@ export default function RulesPage() {
       setCfRules((prev) => [...prev, rule]);
       resetCfForm();
     } catch {
-      alert('Network error');
+      toast('Network error', 'error');
     } finally {
       setCfSaving(false);
     }

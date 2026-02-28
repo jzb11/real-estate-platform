@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FollowUpSequence } from '@prisma/client';
+import { useToast } from '@/components/ui/Toast';
 
 type SequenceWithCount = FollowUpSequence & {
   _count?: { scheduledSequences: number };
 };
 
 export default function SequencesPage() {
+  const { toast } = useToast();
   const [sequences, setSequences] = useState<SequenceWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -68,12 +70,12 @@ export default function SequencesPage() {
       const res = await fetch(`/api/sequences/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Failed to delete' }));
-        alert(err.error ?? 'Failed to delete sequence');
+        toast(err.error ?? 'Failed to delete sequence', 'error');
         return;
       }
       setSequences((prev) => prev.filter((s) => s.id !== id));
     } catch {
-      alert('Network error — could not delete sequence');
+      toast('Network error — could not delete sequence', 'error');
     } finally {
       setDeletingId(null);
     }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useToast } from '@/components/ui/Toast';
 
 interface SkipTraceRequest {
   id: string;
@@ -35,6 +36,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function SkipTracePage() {
+  const { toast } = useToast();
   const [requests, setRequests] = useState<SkipTraceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,13 +107,13 @@ export default function SkipTracePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error ?? 'Skip-trace failed');
+        toast(data.error ?? 'Skip-trace failed', 'error');
         return;
       }
       setSinglePropertyId('');
       await fetchStatus();
     } catch {
-      alert('Network error');
+      toast('Network error', 'error');
     } finally {
       setSingleRunning(false);
     }

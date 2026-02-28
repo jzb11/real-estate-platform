@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useToast } from '@/components/ui/Toast';
 
 interface AuditEntry {
   id: string;
@@ -38,6 +39,7 @@ interface DncEntry {
 type Tab = 'audit' | 'consent' | 'dnc';
 
 export default function CompliancePage() {
+  const { toast } = useToast();
   const [tab, setTab] = useState<Tab>('audit');
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [consentRecords, setConsentRecords] = useState<ConsentRecord[]>([]);
@@ -87,7 +89,7 @@ export default function CompliancePage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Failed to add to DNC list');
+        toast(data.error ?? 'Failed to add to DNC list', 'error');
         return;
       }
       setDncPhone('');
@@ -99,7 +101,7 @@ export default function CompliancePage() {
         setDncEntries(data.dncEntries ?? []);
       }
     } catch {
-      alert('Network error');
+      toast('Network error', 'error');
     } finally {
       setAddingDnc(false);
     }

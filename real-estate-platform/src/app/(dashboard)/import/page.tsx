@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { useToast } from '@/components/ui/Toast';
 
 interface ImportResult {
   totalRows: number;
@@ -16,6 +17,7 @@ type ImportStatus = 'idle' | 'uploading' | 'importing' | 'done' | 'error';
 type ScrapeStatus = 'idle' | 'scraping' | 'done' | 'error';
 
 export default function ImportPage() {
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -38,7 +40,7 @@ export default function ImportPage() {
   function handleFileSelect(file: File | null) {
     if (!file) return;
     if (!file.name.endsWith('.csv')) {
-      alert('Please select a CSV file (.csv)');
+      toast('Please select a CSV file (.csv)', 'warning');
       return;
     }
     setSelectedFile(file);
