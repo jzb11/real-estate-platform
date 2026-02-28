@@ -69,6 +69,20 @@ export async function GET(
       ruleEvals: {
         orderBy: { evaluatedAt: 'desc' },
       },
+      offeredDeals: {
+        orderBy: { sentAt: 'desc' },
+        select: {
+          id: true,
+          sentToEmail: true,
+          recipientName: true,
+          status: true,
+          sentAt: true,
+          emailOpenedAt: true,
+          linkClickedAt: true,
+          bouncedAt: true,
+          sendgridMessageId: true,
+        },
+      },
     },
   });
 

@@ -64,6 +64,17 @@ interface DealDetail {
   };
   history: DealHistory[];
   ruleEvals: RuleEval[];
+  offeredDeals: Array<{
+    id: string;
+    sentToEmail: string;
+    recipientName: string | null;
+    status: string;
+    sentAt: string | null;
+    emailOpenedAt: string | null;
+    linkClickedAt: string | null;
+    bouncedAt: string | null;
+    sendgridMessageId: string | null;
+  }>;
 }
 
 interface DealAlert {
@@ -667,6 +678,58 @@ export default function DealDetailPage({
               )}
             </div>
           </section>
+
+          {/* ── Section: Offer History ──────────────────────────────────── */}
+          {deal.offeredDeals && deal.offeredDeals.length > 0 && (
+            <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+              <div className="border-b border-gray-100 px-6 py-4">
+                <h2 className="text-base font-semibold text-gray-900">
+                  Offer History ({deal.offeredDeals.length})
+                </h2>
+              </div>
+              <div className="px-6 py-4 space-y-3">
+                {deal.offeredDeals.map((offer) => (
+                  <div key={offer.id} className="rounded-lg border border-gray-100 p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {offer.recipientName ?? offer.sentToEmail}
+                        </p>
+                        {offer.recipientName && (
+                          <p className="text-xs text-gray-500">{offer.sentToEmail}</p>
+                        )}
+                      </div>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        offer.bouncedAt
+                          ? 'bg-red-100 text-red-700'
+                          : offer.linkClickedAt
+                          ? 'bg-green-100 text-green-700'
+                          : offer.emailOpenedAt
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {offer.bouncedAt ? 'Bounced' : offer.linkClickedAt ? 'Clicked' : offer.emailOpenedAt ? 'Opened' : 'Sent'}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
+                      {offer.sentAt && (
+                        <span>Sent: {new Date(offer.sentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                      )}
+                      {offer.emailOpenedAt && (
+                        <span className="text-blue-600">Opened: {new Date(offer.emailOpenedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                      )}
+                      {offer.linkClickedAt && (
+                        <span className="text-green-600">Clicked: {new Date(offer.linkClickedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                      )}
+                      {offer.bouncedAt && (
+                        <span className="text-red-600">Bounced: {new Date(offer.bouncedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ── Section: Level 2 Deal Analysis ─────────────────────────── */}
           <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
