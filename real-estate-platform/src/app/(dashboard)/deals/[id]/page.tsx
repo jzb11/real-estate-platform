@@ -49,11 +49,49 @@ interface DealDetail {
     lastSaleDate: string | null;
     taxAssessedValue: number | null;
     ownershipName: string | null;
+    equityPercent: number | null;
+    debtOwed: number | null;
+    interestRate: number | null;
+    yearBuilt: number | null;
+    squareFootage: number | null;
+    bedrooms: number | null;
+    bathrooms: number | null;
+    unitCount: number | null;
+    lotSize: number | null;
+    annualPropertyTax: number | null;
     distressSignals: Record<string, unknown>;
     dataFreshnessDate: string;
   };
   history: DealHistory[];
   ruleEvals: RuleEval[];
+}
+
+interface DealAlert {
+  category: string;
+  severity: 'info' | 'warning' | 'danger';
+  title: string;
+  detail: string;
+}
+
+interface AnalysisResult {
+  dealId: string;
+  propertyId: string;
+  analysis: {
+    alerts: DealAlert[];
+    compValidation: { valid: boolean; issues: string[] };
+    rehabAssessment: {
+      rehabTraps: DealAlert[];
+      tooExpensiveToFlip: boolean;
+      estimatedProfit: number | null;
+    };
+    transactionStrategy: {
+      recommended: string;
+      reason: string;
+      assignmentFee: number | null;
+    } | null;
+    multifamilyWarning: DealAlert | null;
+    taxWarning: DealAlert | null;
+  };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -132,6 +170,10 @@ export default function DealDetailPage({
   // Qualification
   const [isQualifying, setIsQualifying] = useState(false);
 
+  // Deal Analysis (Level 2)
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   // ── Data fetching ────────────────────────────────────────────────────────────
 
   async function fetchDeal() {
@@ -206,6 +248,29 @@ export default function DealDetailPage({
       alert('Network error — could not run qualification');
     } finally {
       setIsQualifying(false);
+    }
+  }
+
+  async function handleAnalyze() {
+    if (!deal) return;
+    setIsAnalyzing(true);
+    try {
+      const res = await fetch(`/api/deals/${id}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repairCosts: repairs }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Analysis failed' }));
+        alert(err.error ?? 'Analysis failed');
+        return;
+      }
+      const data: AnalysisResult = await res.json();
+      setAnalysis(data);
+    } catch {
+      alert('Network error — could not run analysis');
+    } finally {
+      setIsAnalyzing(false);
     }
   }
 
@@ -366,6 +431,32 @@ export default function DealDetailPage({
                   <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Last Sale Date</dt>
                   <dd className="mt-1 text-sm text-gray-900">{formatDate(deal.property.lastSaleDate)}</dd>
                 </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Year Built</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{deal.property.yearBuilt ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sq Ft</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{deal.property.squareFootage ? deal.property.squareFootage.toLocaleString() : '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Beds / Baths</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {deal.property.bedrooms ?? '—'} / {deal.property.bathrooms ?? '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Units</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{deal.property.unitCount ?? '1'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Equity</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{deal.property.equityPercent != null ? `${deal.property.equityPercent}%` : '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Annual Tax</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{formatCurrency(deal.property.annualPropertyTax)}</dd>
+                </div>
               </dl>
 
               {/* Distress signals */}
@@ -515,6 +606,102 @@ export default function DealDetailPage({
             </div>
           </section>
 
+          {/* ── Section: Level 2 Deal Analysis ─────────────────────────── */}
+          <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Advanced Deal Analysis</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Comp validation, rehab traps, liquidity, strategy</p>
+              </div>
+              <button
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50 transition-colors"
+              >
+                {isAnalyzing ? 'Analyzing...' : analysis ? 'Re-Analyze' : 'Run Analysis'}
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              {!analysis ? (
+                <p className="text-sm text-gray-400 italic">
+                  Click &quot;Run Analysis&quot; to check comps, rehab traps, liquidity risks, and get strategy recommendations.
+                </p>
+              ) : (
+                <div className="space-y-5">
+                  {/* Alerts */}
+                  {analysis.analysis.alerts.length > 0 ? (
+                    <div className="space-y-2">
+                      {analysis.analysis.alerts.map((alert, i) => (
+                        <div
+                          key={i}
+                          className={`rounded-lg border p-3 text-sm ${
+                            alert.severity === 'danger'
+                              ? 'border-red-200 bg-red-50 text-red-800'
+                              : alert.severity === 'warning'
+                              ? 'border-amber-200 bg-amber-50 text-amber-800'
+                              : 'border-blue-200 bg-blue-50 text-blue-800'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="mt-0.5">
+                              {alert.severity === 'danger' ? (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                              ) : alert.severity === 'warning' ? (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                              ) : (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              )}
+                            </span>
+                            <div>
+                              <p className="font-semibold">{alert.title}</p>
+                              <p className="mt-0.5 text-xs opacity-90">{alert.detail}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                      <p className="text-sm font-medium text-green-800">No issues found — deal looks clean.</p>
+                    </div>
+                  )}
+
+                  {/* Transaction Strategy */}
+                  {analysis.analysis.transactionStrategy && (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recommended Strategy</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {analysis.analysis.transactionStrategy.recommended === 'double_close'
+                          ? 'Double (Simultaneous) Close'
+                          : analysis.analysis.transactionStrategy.recommended === 'assignment'
+                          ? 'Standard Assignment'
+                          : 'Hold / Creative Strategy'}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">{analysis.analysis.transactionStrategy.reason}</p>
+                      {analysis.analysis.transactionStrategy.assignmentFee != null && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Assignment fee: {formatCurrency(analysis.analysis.transactionStrategy.assignmentFee)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Rehab Assessment Summary */}
+                  {analysis.analysis.rehabAssessment.tooExpensiveToFlip && (
+                    <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4">
+                      <p className="text-sm font-bold text-red-800">
+                        DEAL KILLER: Too expensive to flip at current repair estimate.
+                      </p>
+                      <p className="text-xs text-red-700 mt-1">
+                        Adjust repair costs or pursue a different strategy (wholesale, creative finance, hold).
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
           {/* ── Section: Stage History ───────────────────────────────────── */}
           <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-gray-100 px-6 py-4">
@@ -626,6 +813,13 @@ export default function DealDetailPage({
                 className="rounded-lg border border-blue-200 bg-blue-50 px-5 py-2.5 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100 disabled:opacity-50 transition-colors"
               >
                 {isQualifying ? 'Qualifying...' : 'Re-Qualify'}
+              </button>
+              <button
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100 disabled:opacity-50 transition-colors"
+              >
+                {isAnalyzing ? 'Analyzing...' : 'Analyze Deal'}
               </button>
               {deal.status === 'QUALIFIED' && (
                 <Link

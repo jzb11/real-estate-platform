@@ -15,6 +15,13 @@ export interface PropStreamProperty {
   debtOwed?: number; // Total liens
   interestRate?: number; // Current mortgage rate
   daysOnMarket?: number;
+  yearBuilt?: number;
+  squareFootage?: number; // Living area in sq ft
+  bedrooms?: number;
+  bathrooms?: number; // Allows half-baths (2.5)
+  unitCount?: number; // Number of units (1 = SFR, 5+ = large multi)
+  lotSize?: number; // Lot size in sq ft
+  annualPropertyTax?: number;
   distressSignals?: Record<string, boolean>; // foreclosure, auction, preforeclosure, etc.
   dataFreshnessDate: Date;
   rawData?: Record<string, unknown>;

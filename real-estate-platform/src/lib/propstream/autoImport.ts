@@ -35,57 +35,39 @@ export async function autoImportFromPropStream(
         select: { id: true },
       });
 
+      const propertyData = {
+        address: prop.address,
+        city: prop.city,
+        state: prop.state,
+        zip: prop.zip,
+        propertyType: prop.propertyType ?? null,
+        estimatedValue: prop.estimatedValue ?? null,
+        lastSalePrice: prop.lastSalePrice ?? null,
+        lastSaleDate: prop.lastSaleDate ?? null,
+        taxAssessedValue: prop.taxAssessedValue ?? null,
+        ownershipName: prop.ownershipName ?? null,
+        ownershipPhone: prop.ownershipPhone ?? null,
+        equityPercent: prop.equityPercent ?? null,
+        debtOwed: prop.debtOwed ?? null,
+        interestRate: prop.interestRate ?? null,
+        daysOnMarket: prop.daysOnMarket !== undefined ? Math.round(prop.daysOnMarket) : null,
+        yearBuilt: prop.yearBuilt ?? null,
+        squareFootage: prop.squareFootage ?? null,
+        bedrooms: prop.bedrooms ?? null,
+        bathrooms: prop.bathrooms ?? null,
+        unitCount: prop.unitCount ?? null,
+        lotSize: prop.lotSize ?? null,
+        annualPropertyTax: prop.annualPropertyTax ?? null,
+        distressSignals: (prop.distressSignals as object) ?? {},
+        dataSource: 'SCRAPER' as const,
+        dataFreshnessDate: prop.dataFreshnessDate,
+        rawData: (prop.rawData as object) ?? {},
+      };
+
       await prisma.property.upsert({
         where: { externalId: prop.externalId },
-        create: {
-          externalId: prop.externalId,
-          address: prop.address,
-          city: prop.city,
-          state: prop.state,
-          zip: prop.zip,
-          propertyType: prop.propertyType ?? null,
-          estimatedValue: prop.estimatedValue ?? null,
-          lastSalePrice: prop.lastSalePrice ?? null,
-          lastSaleDate: prop.lastSaleDate ?? null,
-          taxAssessedValue: prop.taxAssessedValue ?? null,
-          ownershipName: prop.ownershipName ?? null,
-          ownershipPhone: prop.ownershipPhone ?? null,
-          equityPercent: prop.equityPercent ?? null,
-          debtOwed: prop.debtOwed ?? null,
-          interestRate: prop.interestRate ?? null,
-          daysOnMarket:
-            prop.daysOnMarket !== undefined
-              ? Math.round(prop.daysOnMarket)
-              : null,
-          distressSignals: (prop.distressSignals as object) ?? {},
-          dataSource: 'SCRAPER',
-          dataFreshnessDate: prop.dataFreshnessDate,
-          rawData: (prop.rawData as object) ?? {},
-        },
-        update: {
-          address: prop.address,
-          city: prop.city,
-          state: prop.state,
-          zip: prop.zip,
-          propertyType: prop.propertyType ?? null,
-          estimatedValue: prop.estimatedValue ?? null,
-          lastSalePrice: prop.lastSalePrice ?? null,
-          lastSaleDate: prop.lastSaleDate ?? null,
-          taxAssessedValue: prop.taxAssessedValue ?? null,
-          ownershipName: prop.ownershipName ?? null,
-          ownershipPhone: prop.ownershipPhone ?? null,
-          equityPercent: prop.equityPercent ?? null,
-          debtOwed: prop.debtOwed ?? null,
-          interestRate: prop.interestRate ?? null,
-          daysOnMarket:
-            prop.daysOnMarket !== undefined
-              ? Math.round(prop.daysOnMarket)
-              : null,
-          distressSignals: (prop.distressSignals as object) ?? {},
-          dataSource: 'SCRAPER',
-          dataFreshnessDate: prop.dataFreshnessDate,
-          rawData: (prop.rawData as object) ?? {},
-        },
+        create: { externalId: prop.externalId, ...propertyData },
+        update: propertyData,
       });
 
       if (existing) {

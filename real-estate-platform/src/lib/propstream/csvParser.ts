@@ -239,6 +239,29 @@ export function parsePropStreamCsv(csvString: string): PropStreamProperty[] {
       'Land Use'
     );
 
+    // --- Physical attributes ---
+    const yearBuilt = parseNum(
+      getField(row, headers, 'Year Built', 'YearBuilt', 'Year Constructed')
+    );
+    const squareFootage = parseNum(
+      getField(row, headers, 'Square Footage', 'Sq Ft', 'Living Area', 'Building Area', 'SqFt', 'Square Feet', 'Living Sq Ft')
+    );
+    const bedrooms = parseNum(
+      getField(row, headers, 'Bedrooms', 'Beds', 'Bed', 'Bedroom Count')
+    );
+    const bathrooms = parseNum(
+      getField(row, headers, 'Bathrooms', 'Baths', 'Bath', 'Bathroom Count', 'Total Baths')
+    );
+    const unitCount = parseNum(
+      getField(row, headers, 'Unit Count', 'Units', 'Number of Units', 'Total Units', '# Units')
+    );
+    const lotSize = parseNum(
+      getField(row, headers, 'Lot Size', 'Lot Sq Ft', 'Lot Area', 'Lot Square Feet', 'Land Area')
+    );
+    const annualPropertyTax = parseNum(
+      getField(row, headers, 'Annual Tax', 'Property Tax', 'Tax Amount', 'Annual Property Tax', 'Taxes')
+    );
+
     // --- Distress signals ---
     const distressSignals: Record<string, boolean> = {
       inForeclosure: parseBool(
@@ -282,6 +305,13 @@ export function parsePropStreamCsv(csvString: string): PropStreamProperty[] {
       debtOwed,
       interestRate,
       daysOnMarket,
+      yearBuilt: yearBuilt !== undefined ? Math.round(yearBuilt) : undefined,
+      squareFootage,
+      bedrooms: bedrooms !== undefined ? Math.round(bedrooms) : undefined,
+      bathrooms,
+      unitCount: unitCount !== undefined ? Math.round(unitCount) : undefined,
+      lotSize,
+      annualPropertyTax,
       distressSignals,
       dataFreshnessDate: importTime,
       rawData,

@@ -96,6 +96,13 @@ model Property {
   debtOwed         Float? // Total open liens in dollars
   interestRate     Float? // Current mortgage interest rate
   daysOnMarket     Int? // Days property has been listed
+  yearBuilt        Int? // Year the structure was built
+  squareFootage    Float? // Living area in sq ft
+  bedrooms         Int?
+  bathrooms        Float? // Allows half-baths (e.g. 2.5)
+  unitCount        Int? // Number of units (1 = SFR, 2-4 = small multi, 5+ = large multi)
+  lotSize          Float? // Lot size in sq ft
+  annualPropertyTax Float? // Annual property tax in dollars
   distressSignals  Json      @default("{}")
   dataSource       String    @default("CSV")
   dataFreshnessDate DateTime
@@ -113,6 +120,7 @@ model Property {
   @@index([equityPercent])
   @@index([debtOwed])
   @@index([daysOnMarket])
+  @@index([unitCount])
   @@index([skipTraced])
 }
 

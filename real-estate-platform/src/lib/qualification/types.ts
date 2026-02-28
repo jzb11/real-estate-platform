@@ -31,6 +31,7 @@ export interface PropertyForEvaluation {
   estimatedValue?: number | null;
   lastSalePrice?: number | null;
   taxAssessedValue?: number | null;
+  annualPropertyTax?: number | null;
   distressSignals?: Record<string, unknown>;
   daysOnMarket?: number | null;
   ownerOccupied?: boolean | null;
@@ -38,6 +39,15 @@ export interface PropertyForEvaluation {
   city?: string | null;
   zip?: string | null;
   propertyType?: string | null;
+  yearBuilt?: number | null;
+  squareFootage?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  unitCount?: number | null;
+  lotSize?: number | null;
+  equityPercent?: number | null;
+  debtOwed?: number | null;
+  interestRate?: number | null;
   rawData?: Record<string, unknown>;
   [key: string]: unknown;
 }
