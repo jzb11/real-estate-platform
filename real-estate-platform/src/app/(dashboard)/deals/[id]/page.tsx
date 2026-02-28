@@ -271,6 +271,28 @@ export default function DealDetailPage({
     }
   }
 
+  async function handleReopen() {
+    if (!deal) return;
+    setIsTransitioning(true);
+    try {
+      const res = await fetch(`/api/deals/${id}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetState: 'SOURCED' }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Reopen failed' }));
+        alert(err.error ?? 'Reopen failed');
+        return;
+      }
+      await fetchDeal();
+    } catch {
+      alert('Network error — could not reopen deal');
+    } finally {
+      setIsTransitioning(false);
+    }
+  }
+
   async function handleDelete() {
     if (!deal || !confirm('Permanently delete this deal and all its history? This cannot be undone.')) return;
     try {
@@ -979,6 +1001,15 @@ export default function DealDetailPage({
                     Reject Deal
                   </button>
                 </>
+              )}
+              {deal.status === 'REJECTED' && (
+                <button
+                  onClick={handleReopen}
+                  disabled={isTransitioning}
+                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {isTransitioning ? 'Reopening...' : 'Reopen Deal'}
+                </button>
               )}
               <button
                 onClick={handleExportDeal}

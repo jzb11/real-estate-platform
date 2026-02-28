@@ -17,6 +17,8 @@ export const VALID_TRANSITIONS: ValidTransition[] = [
   { from: 'QUALIFIED',      to: 'REJECTED' },
   { from: 'UNDER_CONTRACT', to: 'CLOSED',         requiredFields: ['closedDate'] },
   { from: 'UNDER_CONTRACT', to: 'REJECTED' },
+  // Reopen transitions — allow re-entering the pipeline from terminal states
+  { from: 'REJECTED',       to: 'SOURCED' },
 ];
 
 export function canTransition(from: DealStatus, to: DealStatus): boolean {

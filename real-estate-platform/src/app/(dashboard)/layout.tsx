@@ -3,7 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+interface NavBadges {
+  pipeline: number;
+  offers: number;
+  monitoring: number;
+}
 
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -26,6 +32,28 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [badges, setBadges] = useState<NavBadges>({ pipeline: 0, offers: 0, monitoring: 0 });
+
+  useEffect(() => {
+    fetch('/api/dashboard/stats', { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setBadges({
+            pipeline: data.activeDealsCount ?? 0,
+            offers: data.offersCount ?? 0,
+            monitoring: 0,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [pathname]);
+
+  function getBadge(href: string): number | null {
+    if (href === '/pipeline' && badges.pipeline > 0) return badges.pipeline;
+    if (href === '/offers' && badges.offers > 0) return badges.offers;
+    return null;
+  }
 
   function isActive(href: string): boolean {
     if (href === '/dashboard') return pathname === '/dashboard';
@@ -48,6 +76,7 @@ export default function DashboardLayout({
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV_LINKS.map((link) => {
             const active = isActive(link.href);
+            const badge = getBadge(link.href);
             return (
               <Link
                 key={link.href}
@@ -67,7 +96,12 @@ export default function DashboardLayout({
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />
                 </svg>
-                {link.label}
+                <span className="flex-1">{link.label}</span>
+                {badge != null && (
+                  <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 leading-none">
+                    {badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -113,6 +147,7 @@ export default function DashboardLayout({
           <nav className="px-3 py-2 space-y-1">
             {NAV_LINKS.map((link) => {
               const active = isActive(link.href);
+              const badge = getBadge(link.href);
               return (
                 <Link
                   key={link.href}
@@ -133,7 +168,12 @@ export default function DashboardLayout({
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />
                   </svg>
-                  {link.label}
+                  <span className="flex-1">{link.label}</span>
+                  {badge != null && (
+                    <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 leading-none">
+                      {badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
