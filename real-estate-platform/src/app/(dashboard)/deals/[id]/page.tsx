@@ -233,6 +233,28 @@ export default function DealDetailPage({
     }
   }
 
+  async function handleReject() {
+    if (!deal || !confirm('Are you sure you want to reject this deal?')) return;
+    setIsTransitioning(true);
+    try {
+      const res = await fetch(`/api/deals/${id}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetState: 'REJECTED' }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Rejection failed' }));
+        alert(err.error ?? 'Rejection failed');
+        return;
+      }
+      await fetchDeal();
+    } catch {
+      alert('Network error — could not reject deal');
+    } finally {
+      setIsTransitioning(false);
+    }
+  }
+
   async function handleQualify() {
     if (!deal) return;
     setIsQualifying(true);
@@ -821,13 +843,22 @@ export default function DealDetailPage({
               >
                 {isAnalyzing ? 'Analyzing...' : 'Analyze Deal'}
               </button>
-              {deal.status === 'QUALIFIED' && (
-                <Link
-                  href={`/offers/${deal.id}/compose`}
-                  className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 transition-colors"
-                >
-                  Send Offer
-                </Link>
+              {deal.status !== 'CLOSED' && deal.status !== 'REJECTED' && (
+                <>
+                  <Link
+                    href={`/offers/${deal.id}/compose`}
+                    className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 transition-colors"
+                  >
+                    Send Offer
+                  </Link>
+                  <button
+                    onClick={handleReject}
+                    disabled={isTransitioning}
+                    className="rounded-lg border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 shadow-sm hover:bg-red-50 disabled:opacity-50 transition-colors"
+                  >
+                    Reject Deal
+                  </button>
+                </>
               )}
               <Link
                 href="/pipeline"

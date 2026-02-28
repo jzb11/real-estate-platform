@@ -645,7 +645,7 @@ export default function PropertiesPage() {
                             {dataAgeText(property.dataFreshnessDate)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           {dealId ? (
                             <Link
                               href={`/deals/${dealId}`}

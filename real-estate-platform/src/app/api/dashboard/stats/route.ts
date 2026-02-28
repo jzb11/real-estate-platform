@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  const [dealCounts, propertiesCount, offersCount, closedDeals, openedOffers, activeSequences] = await Promise.all([
+  const [dealCounts, propertiesCount, offersCount, closedDeals, openedOffers, activeSequences, pipelineDeals] = await Promise.all([
     // Deal counts by status
     prisma.deal.groupBy({
       by: ['status'],
@@ -46,6 +46,20 @@ export async function GET() {
     prisma.followUpScheduled.count({
       where: { userId: user.id, status: 'ACTIVE' },
     }),
+    // Pipeline deals with estimated values for pipeline value calc + stage age
+    prisma.deal.findMany({
+      where: {
+        userId: user.id,
+        status: { notIn: ['CLOSED', 'REJECTED'] },
+      },
+      select: {
+        status: true,
+        createdAt: true,
+        property: {
+          select: { estimatedValue: true },
+        },
+      },
+    }),
   ]);
 
   const dealsByStatus: Record<string, number> = {};
@@ -63,6 +77,22 @@ export async function GET() {
     ? Math.round((openedOffers / offersCount) * 100)
     : 0;
 
+  // Pipeline value: sum of estimated property values for active deals
+  let pipelineValue = 0;
+  const stageAges: Record<string, number[]> = {};
+  const now = Date.now();
+  for (const deal of pipelineDeals) {
+    pipelineValue += deal.property?.estimatedValue ?? 0;
+    if (!stageAges[deal.status]) stageAges[deal.status] = [];
+    stageAges[deal.status].push(Math.floor((now - deal.createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+  }
+
+  // Average days in pipeline per stage
+  const avgDaysPerStage: Record<string, number> = {};
+  for (const [stage, ages] of Object.entries(stageAges)) {
+    avgDaysPerStage[stage] = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
+  }
+
   return NextResponse.json({
     totalDeals,
     dealsByStatus,
@@ -72,5 +102,8 @@ export async function GET() {
     conversionRate,
     openRate,
     activeSequences,
+    pipelineValue,
+    avgDaysPerStage,
+    activeDealsCount: pipelineDeals.length,
   });
 }

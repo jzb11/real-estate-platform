@@ -37,6 +37,9 @@ interface DashboardStats {
   conversionRate: number;
   openRate: number;
   activeSequences: number;
+  pipelineValue: number;
+  avgDaysPerStage: Record<string, number>;
+  activeDealsCount: number;
 }
 
 interface RecentActivity {
@@ -87,6 +90,7 @@ export default function DashboardPage() {
   const propertiesCount = stats?.propertiesCount ?? 0;
   const offersCount = stats?.offersCount ?? 0;
   const conversionRate = stats?.conversionRate ?? 0;
+  const pipelineValue = stats?.pipelineValue ?? 0;
 
   // Collect recent activity across all deals (last 5 history entries)
   const recentActivity: RecentActivity[] = [];
@@ -131,7 +135,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats grid */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             value={totalDeals}
             label="Total Deals"
@@ -159,6 +163,34 @@ export default function DashboardPage() {
             loading={isLoading}
             variant="blue"
           />
+        </div>
+
+        {/* Pipeline value */}
+        <div className="mb-8 rounded-xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm flex items-center justify-between">
+          <div>
+            {isLoading ? (
+              <div className="h-8 w-32 animate-pulse rounded bg-indigo-200"></div>
+            ) : (
+              <p className="text-3xl font-bold text-indigo-800">
+                ${pipelineValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+              </p>
+            )}
+            <p className="mt-1 text-sm text-indigo-600">Active Pipeline Value</p>
+          </div>
+          {!isLoading && stats?.avgDaysPerStage && Object.keys(stats.avgDaysPerStage).length > 0 && (
+            <div className="flex gap-4">
+              {(['SOURCED', 'ANALYZING', 'QUALIFIED', 'UNDER_CONTRACT'] as const).map((stage) => {
+                const days = stats.avgDaysPerStage[stage];
+                if (days == null) return null;
+                return (
+                  <div key={stage} className="text-center">
+                    <p className="text-lg font-semibold text-indigo-700">{days}d</p>
+                    <p className="text-xs text-indigo-500">{stage.replace('_', ' ')}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Secondary stats */}
