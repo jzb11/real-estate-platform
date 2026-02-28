@@ -330,6 +330,8 @@ export default function PropertiesPage() {
     return v !== '';
   });
 
+  const staleCount = properties.filter((p) => p.isStale).length;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-screen-xl mx-auto px-4 py-8">
@@ -339,7 +341,14 @@ export default function PropertiesPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Properties</h1>
             {!isLoading && (
-              <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} properties found</p>
+              <p className="mt-1 text-sm text-gray-500">
+                {total.toLocaleString()} properties found
+                {staleCount > 0 && (
+                  <span className="ml-2 text-amber-600 font-medium">
+                    ({staleCount} with stale data)
+                  </span>
+                )}
+              </p>
             )}
           </div>
           <div className="flex gap-3 self-start">

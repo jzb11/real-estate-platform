@@ -80,6 +80,30 @@ function TrackingContent() {
     downloadCsv(rows, `offers-export-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
+  async function handleResend(offer: OfferWithDeal) {
+    if (!confirm(`Resend offer to ${offer.sentToEmail}?`)) return;
+    try {
+      const res = await fetch('/api/offers/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dealId: offer.dealId,
+          recipientEmail: offer.sentToEmail,
+          recipientName: offer.recipientName || undefined,
+          repairCosts: 0,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Resend failed' }));
+        alert(err.error ?? 'Resend failed');
+        return;
+      }
+      loadOffers(statusFilter || undefined);
+    } catch {
+      alert('Network error — could not resend offer');
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-4">
@@ -195,7 +219,7 @@ function TrackingContent() {
                   {offer.deal.property.address}, {offer.deal.property.city} &rarr;
                 </Link>
               )}
-              <OfferCard offer={offer} />
+              <OfferCard offer={offer} onResend={handleResend} />
             </div>
           ))}
         </div>
