@@ -18,6 +18,9 @@ const PROPERTY_SELECT = {
   city: true,
   state: true,
   estimatedValue: true,
+  yearBuilt: true,
+  squareFootage: true,
+  unitCount: true,
   dataFreshnessDate: true,
 };
 

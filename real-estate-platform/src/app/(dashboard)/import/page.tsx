@@ -8,6 +8,7 @@ interface ImportResult {
   imported: number;
   updated: number;
   skipped: number;
+  dealsCreated?: number;
   errors: string[];
 }
 
@@ -30,6 +31,7 @@ export default function ImportPage() {
   const [scrapeResult, setScrapeResult] = useState<ImportResult | null>(null);
   const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [showScrapeForm, setShowScrapeForm] = useState(false);
+  const [autoCreateDeals, setAutoCreateDeals] = useState(true);
 
   // ── File selection ────────────────────────────────────────────────────────────
 
@@ -79,6 +81,7 @@ export default function ImportPage() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    if (autoCreateDeals) formData.append('createDeals', 'true');
 
     try {
       setStatus('importing');
@@ -265,9 +268,19 @@ export default function ImportPage() {
           </div>
         </div>
 
-        {/* Import button */}
+        {/* Import options */}
         {selectedFile && status !== 'done' && (
-          <div className="mb-6">
+          <div className="mb-6 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoCreateDeals}
+                onChange={(e) => setAutoCreateDeals(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Auto-create deals for new properties</span>
+              <span className="text-xs text-gray-400">(adds to pipeline as SOURCED)</span>
+            </label>
             <button
               onClick={handleImport}
               disabled={isProcessing}
@@ -335,6 +348,15 @@ export default function ImportPage() {
                       Rows skipped (missing required fields)
                     </dt>
                     <dd className="font-bold text-gray-700">{result.skipped.toLocaleString()}</dd>
+                  </div>
+                )}
+                {result.dealsCreated != null && result.dealsCreated > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <dt className="flex items-center gap-2 text-gray-600">
+                      <span className="font-mono text-purple-600">+</span>
+                      Deals created (SOURCED)
+                    </dt>
+                    <dd className="font-bold text-purple-800">{result.dealsCreated.toLocaleString()}</dd>
                   </div>
                 )}
                 {result.errors.length > 0 && (

@@ -16,6 +16,9 @@ export interface DealWithPipeline {
     city: string;
     state: string;
     estimatedValue: number | null;
+    yearBuilt: number | null;
+    squareFootage: number | null;
+    unitCount: number | null;
     dataFreshnessDate: string | Date;
   };
   history: Array<{
@@ -71,6 +74,17 @@ export default function DealCard({ deal, onTransition, isTransitioning = false }
           {deal.property.city}, {deal.property.state}
         </p>
       </Link>
+
+      {/* Property quick stats */}
+      {(deal.property.yearBuilt || deal.property.squareFootage || (deal.property.unitCount && deal.property.unitCount > 1)) && (
+        <p className="mt-1 text-xs text-gray-400">
+          {[
+            deal.property.yearBuilt && `Built ${deal.property.yearBuilt}`,
+            deal.property.squareFootage && `${deal.property.squareFootage.toLocaleString()} sqft`,
+            deal.property.unitCount && deal.property.unitCount > 1 && `${deal.property.unitCount} units`,
+          ].filter(Boolean).join(' · ')}
+        </p>
+      )}
 
       {/* Status badge */}
       <div className="mt-2 flex items-center gap-2 flex-wrap">

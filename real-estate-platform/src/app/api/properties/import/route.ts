@@ -17,9 +17,10 @@ const MAX_ROWS = 10_000;
  * the raw property table is not user-scoped, but deals are. Properties are
  * stored globally and accessed through the user-scoped deals.
  *
- * Note: This endpoint does NOT create deals automatically. It only stores properties.
+ * If FormData includes createDeals=true, automatically creates a SOURCED deal
+ * for each newly imported property (skips properties that already have a deal for this user).
  *
- * Returns: { totalRows, imported, updated, skipped, errors }
+ * Returns: { totalRows, imported, updated, skipped, errors, dealsCreated }
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const { userId: clerkId } = await auth();
@@ -62,6 +63,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // Check if auto-deal creation is requested
+  const createDeals = formData.get('createDeals') === 'true';
+
   if (!csvText.trim()) {
     return NextResponse.json(
       { error: 'Uploaded CSV file is empty.' },
@@ -90,12 +94,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const result: ImportResult = {
+  const result = {
     totalRows: properties.length,
     imported: 0,
     updated: 0,
     skipped: 0,
-    errors: [],
+    dealsCreated: 0,
+    errors: [] as string[],
   };
 
   // Upsert each property
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         rawData: (prop.rawData as object) ?? {},
       };
 
-      await prisma.property.upsert({
+      const upserted = await prisma.property.upsert({
         where: { externalId: prop.externalId },
         create: { externalId: prop.externalId, ...propertyData },
         update: propertyData,
@@ -145,6 +150,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         result.updated++;
       } else {
         result.imported++;
+      }
+
+      // Auto-create deal if requested and property doesn't already have one for this user
+      if (createDeals) {
+        const existingDeal = await prisma.deal.findFirst({
+          where: {
+            propertyId: upserted.id,
+            userId: user.id,
+            status: { notIn: ['CLOSED', 'REJECTED'] },
+          },
+          select: { id: true },
+        });
+
+        if (!existingDeal) {
+          await prisma.deal.create({
+            data: {
+              propertyId: upserted.id,
+              userId: user.id,
+              title: prop.address,
+              status: 'SOURCED',
+              history: {
+                create: {
+                  userId: user.id,
+                  fieldChanged: 'status',
+                  oldValue: null,
+                  newValue: 'SOURCED',
+                },
+              },
+            },
+          });
+          result.dealsCreated++;
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
