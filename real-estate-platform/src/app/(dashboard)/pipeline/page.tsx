@@ -109,6 +109,29 @@ export default function PipelinePage() {
     }
   }
 
+  const [bulkQualifying, setBulkQualifying] = useState(false);
+
+  async function handleBulkQualify() {
+    const dealIds = selectedDeals.size > 0
+      ? [...selectedDeals]
+      : (data?.pipeline.ANALYZING ?? []).map((d) => d.id);
+    if (dealIds.length === 0) return;
+    setBulkQualifying(true);
+    try {
+      await Promise.all(
+        dealIds.map((dealId) =>
+          fetch(`/api/deals/${dealId}/qualify`, { method: 'POST' })
+        )
+      );
+      setSelectedDeals(new Set());
+      await fetchDeals();
+    } catch {
+      alert('Some qualifications failed. Please try again.');
+    } finally {
+      setBulkQualifying(false);
+    }
+  }
+
   function exportPipelineCsv() {
     if (!data) return;
     const rows: Record<string, string | number | null>[] = [];
@@ -277,6 +300,13 @@ export default function PipelinePage() {
                 className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {bulkTransitioning ? 'Moving...' : 'Move to Qualified'}
+              </button>
+              <button
+                onClick={handleBulkQualify}
+                disabled={bulkQualifying}
+                className="rounded bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+              >
+                {bulkQualifying ? 'Qualifying...' : 'Run Qualification'}
               </button>
               <button
                 onClick={() => handleBulkTransition('REJECTED')}

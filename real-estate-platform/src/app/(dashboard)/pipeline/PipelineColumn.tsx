@@ -41,6 +41,9 @@ export default function PipelineColumn({
   const headerClass = COLUMN_HEADER_CLASSES[stage];
   const label = COLUMN_LABELS[stage];
 
+  // Sum ARV for all deals in this column
+  const totalArv = deals.reduce((sum, d) => sum + (d.property.estimatedValue ?? 0), 0);
+
   return (
     <div className="flex flex-col rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
       {/* Column header */}
@@ -51,6 +54,11 @@ export default function PipelineColumn({
             {deals.length}
           </span>
         </div>
+        {totalArv > 0 && (
+          <p className="mt-0.5 text-[10px] opacity-75">
+            ${totalArv.toLocaleString()} ARV
+          </p>
+        )}
       </div>
 
       {/* Cards */}
