@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { DealStatus } from '@prisma/client';
 import { CONTEXTUAL_KB_LINKS } from '@/lib/kb/contextualLinks';
 import { useToast } from '@/components/ui/Toast';
@@ -25,6 +26,7 @@ interface PipelineData {
 
 export default function PipelinePage() {
   const { toast } = useToast();
+  const router = useRouter();
   const helpLinks = CONTEXTUAL_KB_LINKS['pipeline'] ?? [];
 
   const [data, setData] = useState<PipelineData | null>(null);
@@ -55,6 +57,27 @@ export default function PipelinePage() {
   useEffect(() => {
     fetchDeals();
   }, [fetchDeals]);
+
+  // Keyboard shortcuts: N = new deal (import), R = refresh
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        router.push('/import');
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        setIsLoading(true);
+        fetchDeals();
+        toast('Pipeline refreshed', 'success');
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [router, fetchDeals, toast]);
 
   async function handleTransition(dealId: string, targetState: DealStatus) {
     setTransitioningDealId(dealId);
@@ -413,6 +436,17 @@ export default function PipelinePage() {
             </ul>
           </div>
         )}
+      </div>
+
+      {/* Keyboard shortcut hints */}
+      <div className="fixed bottom-4 right-4 z-10 rounded-lg border border-gray-200 bg-white/90 backdrop-blur px-3 py-1.5 shadow-sm text-xs text-gray-400">
+        Press{' '}
+        <kbd className="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-mono font-semibold text-gray-500">N</kbd>
+        {' '}new deal{' '}
+        <span className="mx-1 text-gray-300">&middot;</span>
+        {' '}
+        <kbd className="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-mono font-semibold text-gray-500">R</kbd>
+        {' '}refresh
       </div>
     </div>
   );
