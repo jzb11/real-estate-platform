@@ -68,18 +68,6 @@ interface UserSettings {
   dailyDigest: boolean;
 }
 
-const SETTING_KEYS: (keyof UserSettings)[] = [
-  'sendgridApiKey',
-  'senderEmail',
-  'senderName',
-  'propstreamEmail',
-  'propstreamPassword',
-  'reiskipApiKey',
-  'defaultMinEquity',
-  'autoCreateDeals',
-  'emailNotifications',
-  'dailyDigest',
-];
 
 function maskKey(key: string): string {
   if (!key || key.length < 8) return key ? '****' : '';

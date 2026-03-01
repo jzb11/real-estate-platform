@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 
 interface AuditEntry {
@@ -233,12 +234,12 @@ export default function CompliancePage() {
                     <p className="mt-2 max-w-sm text-sm text-gray-500">
                       Consent records are created when contacts opt in to communications. These records prove compliance with TCPA regulations.
                     </p>
-                    <a
+                    <Link
                       href="/kb"
                       className="mt-5 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
                     >
                       Learn About Consent Management
-                    </a>
+                    </Link>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">

@@ -204,8 +204,6 @@ export default function DealDetailPage({
 
   // Notes editing
   const [notesDraft, setNotesDraft] = useState<string>('');
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   // Timeline note input
   const [newNoteText, setNewNoteText] = useState('');
@@ -420,29 +418,6 @@ export default function DealDetailPage({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  async function handleSaveNotes() {
-    if (!deal) return;
-    setIsSavingNotes(true);
-    try {
-      const res = await fetch(`/api/deals/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: notesDraft }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed to save notes' }));
-        toast(err.error ?? 'Failed to save notes', 'error');
-        return;
-      }
-      setIsEditingNotes(false);
-      await fetchDeal();
-    } catch {
-      toast('Network error — could not save notes', 'error');
-    } finally {
-      setIsSavingNotes(false);
-    }
-  }
-
   // ── Add note to timeline ────────────────────────────────────────────────────
 
   async function handleAddNote() {
@@ -565,7 +540,6 @@ export default function DealDetailPage({
   const nextLabel = nextStage ? NEXT_STAGE_LABEL[deal.status] : undefined;
   const distressSignals = getDistressSignals(deal.property.distressSignals);
   // Reverse history so most recent is first
-  const historyDesc = [...deal.history].reverse();
 
   return (
     <div className="min-h-screen bg-gray-50">
