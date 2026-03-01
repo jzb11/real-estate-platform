@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
 import { useState, useEffect } from 'react';
+import { CommandPalette } from '@/components/ui/CommandPalette';
 
 interface NavBadges {
   pipeline: number;
@@ -109,6 +110,23 @@ export default function DashboardLayout({
           })}
         </nav>
 
+        {/* Search hint */}
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => {
+              const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
+              document.dispatchEvent(event);
+            }}
+            className="w-full flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-400 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span>Search...</span>
+            <kbd className="ml-auto rounded border border-gray-200 bg-white px-1 py-0.5 text-[10px] font-mono">⌘K</kbd>
+          </button>
+        </div>
+
         {/* User section */}
         <div className="border-t border-gray-100 px-4 py-4">
           <div className="flex items-center gap-3">
@@ -187,6 +205,8 @@ export default function DashboardLayout({
       <main className="flex-1 lg:ml-56 lg:pt-0 pt-14">
         {children}
       </main>
+
+      <CommandPalette />
     </div>
   );
 }

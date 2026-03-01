@@ -293,6 +293,12 @@ export default function DashboardPage() {
             >
               Manage Rules
             </Link>
+            <Link
+              href="/analytics"
+              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              View Analytics
+            </Link>
           </div>
         </div>
 
