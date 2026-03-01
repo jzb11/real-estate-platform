@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import Papa from 'papaparse';
 import { useToast } from '@/components/ui/Toast';
 
 interface ImportResult {
@@ -13,7 +14,16 @@ interface ImportResult {
   errors: string[];
 }
 
+interface ValidationWarnings {
+  missingAddress: number;
+  missingCity: number;
+  missingState: number;
+  missingZip: number;
+  totalRows: number;
+}
+
 type ImportStatus = 'idle' | 'uploading' | 'importing' | 'done' | 'error';
+type ValidationStatus = 'idle' | 'validating' | 'valid' | 'warnings';
 type ScrapeStatus = 'idle' | 'scraping' | 'done' | 'error';
 
 export default function ImportPage() {
@@ -35,6 +45,10 @@ export default function ImportPage() {
   const [showScrapeForm, setShowScrapeForm] = useState(false);
   const [autoCreateDeals, setAutoCreateDeals] = useState(true);
 
+  // Validation state
+  const [validationStatus, setValidationStatus] = useState<ValidationStatus>('idle');
+  const [validationWarnings, setValidationWarnings] = useState<ValidationWarnings | null>(null);
+
   // ── File selection ────────────────────────────────────────────────────────────
 
   function handleFileSelect(file: File | null) {
@@ -47,6 +61,77 @@ export default function ImportPage() {
     setResult(null);
     setErrorMessage(null);
     setStatus('idle');
+    setValidationStatus('idle');
+    setValidationWarnings(null);
+
+    // Parse and validate CSV client-side
+    validateCsv(file);
+  }
+
+  function validateCsv(file: File) {
+    setValidationStatus('validating');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (!text) {
+        setValidationStatus('idle');
+        return;
+      }
+      const parsed = Papa.parse<Record<string, string>>(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim(),
+        transform: (value: string) => value.trim(),
+      });
+
+      const headers = parsed.meta.fields ?? [];
+      const warnings: ValidationWarnings = {
+        missingAddress: 0,
+        missingCity: 0,
+        missingState: 0,
+        missingZip: 0,
+        totalRows: parsed.data.length,
+      };
+
+      for (const row of parsed.data) {
+        const address = findField(row, headers, 'Property Address', 'Address', 'Street Address');
+        const city = findField(row, headers, 'City');
+        const state = findField(row, headers, 'State');
+        const zip = findField(row, headers, 'Zip', 'Zip Code', 'Postal Code');
+
+        if (!address) warnings.missingAddress++;
+        if (!city) warnings.missingCity++;
+        if (!state) warnings.missingState++;
+        if (!zip) warnings.missingZip++;
+      }
+
+      setValidationWarnings(warnings);
+      const hasWarnings =
+        warnings.missingAddress > 0 ||
+        warnings.missingCity > 0 ||
+        warnings.missingState > 0 ||
+        warnings.missingZip > 0;
+      setValidationStatus(hasWarnings ? 'warnings' : 'valid');
+    };
+    reader.onerror = () => {
+      setValidationStatus('idle');
+    };
+    reader.readAsText(file);
+  }
+
+  /** Case-insensitive field lookup matching the server-side logic */
+  function findField(row: Record<string, string>, headers: string[], ...candidates: string[]): string | undefined {
+    for (const candidate of candidates) {
+      const lower = candidate.toLowerCase();
+      const match = headers.find((h) => h.toLowerCase() === lower);
+      if (match && row[match] && row[match].trim() !== '') return row[match];
+    }
+    for (const candidate of candidates) {
+      const lower = candidate.toLowerCase();
+      const match = headers.find((h) => h.toLowerCase().includes(lower));
+      if (match && row[match] && row[match].trim() !== '') return row[match];
+    }
+    return undefined;
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -114,6 +199,8 @@ export default function ImportPage() {
     setErrorMessage(null);
     setStatus('idle');
     setShowErrorDetails(false);
+    setValidationStatus('idle');
+    setValidationWarnings(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -270,8 +357,88 @@ export default function ImportPage() {
           </div>
         </div>
 
+        {/* Validation results */}
+        {selectedFile && validationStatus === 'validating' && (
+          <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Validating CSV data...
+            </div>
+          </div>
+        )}
+
+        {selectedFile && validationStatus === 'valid' && validationWarnings && (
+          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="font-semibold">All {validationWarnings.totalRows} properties valid</span>
+            </div>
+            <p className="mt-1 text-green-700">All rows have the required fields (address, city, state, zip).</p>
+          </div>
+        )}
+
+        {selectedFile && validationStatus === 'warnings' && validationWarnings && (
+          <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <span className="font-semibold text-amber-800">Validation warnings found</span>
+            </div>
+            <p className="text-sm text-amber-700 mb-2">
+              {validationWarnings.totalRows} total rows parsed. Some rows are missing critical fields:
+            </p>
+            <ul className="space-y-1 text-sm text-amber-800">
+              {validationWarnings.missingAddress > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="font-mono text-amber-600">!</span>
+                  {validationWarnings.missingAddress} {validationWarnings.missingAddress === 1 ? 'property' : 'properties'} missing address
+                </li>
+              )}
+              {validationWarnings.missingCity > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="font-mono text-amber-600">!</span>
+                  {validationWarnings.missingCity} {validationWarnings.missingCity === 1 ? 'property' : 'properties'} missing city
+                </li>
+              )}
+              {validationWarnings.missingState > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="font-mono text-amber-600">!</span>
+                  {validationWarnings.missingState} {validationWarnings.missingState === 1 ? 'property' : 'properties'} missing state
+                </li>
+              )}
+              {validationWarnings.missingZip > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="font-mono text-amber-600">!</span>
+                  {validationWarnings.missingZip} {validationWarnings.missingZip === 1 ? 'property' : 'properties'} missing zip code
+                </li>
+              )}
+            </ul>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={handleImport}
+                disabled={isProcessing}
+                className="rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+              >
+                Import Anyway (with warnings)
+              </button>
+              <button
+                onClick={handleReset}
+                className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+              >
+                Fix CSV &amp; Re-upload
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Import options */}
-        {selectedFile && status !== 'done' && (
+        {selectedFile && status !== 'done' && validationStatus !== 'warnings' && (
           <div className="mb-6 space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -285,7 +452,7 @@ export default function ImportPage() {
             </label>
             <button
               onClick={handleImport}
-              disabled={isProcessing}
+              disabled={isProcessing || validationStatus === 'validating'}
               className="w-full rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
             >
               {isProcessing ? (

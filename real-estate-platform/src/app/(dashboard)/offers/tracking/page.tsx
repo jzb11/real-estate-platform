@@ -8,6 +8,23 @@ import { OfferCard } from '@/components/ui/OfferCard';
 import { useToast } from '@/components/ui/Toast';
 import { downloadCsv } from '@/lib/exportCsv';
 
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  if (diffMs < 0) return 'just now';
+  const diffSecs = Math.floor(diffMs / 1000);
+  if (diffSecs < 60) return 'just now';
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return `${diffMonths} month${diffMonths !== 1 ? 's' : ''} ago`;
+}
+
 type OfferWithDeal = OfferedDeal & {
   deal?: {
     title: string;
@@ -214,12 +231,30 @@ function TrackingContent() {
           {paginatedOffers.map((offer) => (
             <div key={offer.id}>
               {offer.deal && (
-                <Link
-                  href={`/deals/${offer.dealId}`}
-                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline mb-1 ml-1 block"
-                >
-                  {offer.deal.property.address}, {offer.deal.property.city} &rarr;
-                </Link>
+                <div className="flex items-center justify-between mb-1 ml-1">
+                  <Link
+                    href={`/deals/${offer.dealId}`}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {offer.deal.property.address}, {offer.deal.property.city} &rarr;
+                  </Link>
+                  <span
+                    className="text-xs text-gray-400"
+                    title={new Date(offer.sentAt ?? offer.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  >
+                    {timeAgo(String(offer.sentAt ?? offer.createdAt))}
+                  </span>
+                </div>
+              )}
+              {!offer.deal && (
+                <div className="flex justify-end mb-1 mr-1">
+                  <span
+                    className="text-xs text-gray-400"
+                    title={new Date(offer.sentAt ?? offer.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  >
+                    {timeAgo(String(offer.sentAt ?? offer.createdAt))}
+                  </span>
+                </div>
               )}
               <OfferCard offer={offer} onResend={handleResend} />
             </div>
