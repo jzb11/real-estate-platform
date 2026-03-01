@@ -6,6 +6,7 @@ import { UserButton } from '@clerk/nextjs';
 import { useState, useEffect } from 'react';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { NavigationProgress } from '@/components/ui/NavigationProgress';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 interface NavBadges {
   pipeline: number;
@@ -205,7 +206,7 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <main className="flex-1 lg:ml-56 lg:pt-0 pt-14">
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 
       <CommandPalette />
