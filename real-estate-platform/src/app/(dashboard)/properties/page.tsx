@@ -25,6 +25,26 @@ interface Property {
   isStale: boolean;
 }
 
+interface PropertyDetail {
+  id: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  propertyType: string | null;
+  estimatedValue: number | null;
+  equityPercent: number | null;
+  debtOwed: number | null;
+  interestRate: number | null;
+  daysOnMarket: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  squareFootage: number | null;
+  lotSize: number | null;
+  yearBuilt: number | null;
+  lastSalePrice: number | null;
+}
+
 interface SearchResult {
   properties: Property[];
   total: number;
@@ -94,6 +114,23 @@ function dataAgeText(dateStr: string): string {
   return `${days} days ago`;
 }
 
+function dataAgeDays(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function dataAgeHuman(dateStr: string): string {
+  const days = dataAgeDays(dateStr);
+  if (days < 30) return `Updated ${days} days ago`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return 'Updated 1 month ago';
+  if (months < 12) return `Updated ${months} months ago`;
+  const years = Math.floor(months / 12);
+  if (years === 1) return 'Updated 1 year ago';
+  return `Updated ${years} years ago`;
+}
+
+const STALE_THRESHOLD_DAYS = 90;
+
 function buildSearchParams(filters: FilterState, page: number): string {
   const params = new URLSearchParams();
   if (filters.minEquity) params.set('minEquity', filters.minEquity);
@@ -134,7 +171,40 @@ export default function PropertiesPage() {
   const [creatingDealFor, setCreatingDealFor] = useState<string | null>(null);
   const [dealCreatedFor, setDealCreatedFor] = useState<Record<string, string>>({});
 
+  // Property comparison
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareProperties, setCompareProperties] = useState<PropertyDetail[]>([]);
+  const [isLoadingCompare, setIsLoadingCompare] = useState(false);
+
+  // Quick-add deal modal (Task 8)
+  const [quickDealProperty, setQuickDealProperty] = useState<Property | null>(null);
+  const [quickDealTitle, setQuickDealTitle] = useState('');
+  const [isCreatingQuickDeal, setIsCreatingQuickDeal] = useState(false);
+
+  // Duplicate detection
+  const [duplicateCount, setDuplicateCount] = useState(0);
+  const [duplicateGroupCount, setDuplicateGroupCount] = useState(0);
+  const [showDuplicatesAlert, setShowDuplicatesAlert] = useState(true);
+
+  // Stale data refresh
+  const [showStaleOnly, setShowStaleOnly] = useState(false);
+
   const abortRef = useRef<AbortController | null>(null);
+
+  // ── Fetch duplicates ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    fetch('/api/properties/duplicates')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setDuplicateCount(data.totalDuplicates ?? 0);
+          setDuplicateGroupCount(data.duplicateGroups?.length ?? 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Fetch saved filters ──────────────────────────────────────────────────────
 
@@ -325,6 +395,81 @@ export default function PropertiesPage() {
     }
   }
 
+  // ── Property comparison ─────────────────────────────────────────────────────
+
+  function togglePropertySelection(propertyId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(propertyId)) {
+        next.delete(propertyId);
+      } else {
+        if (next.size >= 3) return prev; // max 3
+        next.add(propertyId);
+      }
+      return next;
+    });
+  }
+
+  async function handleCompare() {
+    if (selectedIds.size < 2) return;
+    setIsLoadingCompare(true);
+    setShowCompareModal(true);
+    try {
+      const details = await Promise.all(
+        Array.from(selectedIds).map(async (pid) => {
+          const res = await fetch(`/api/properties/${pid}`);
+          if (!res.ok) throw new Error('Failed to load property');
+          return res.json() as Promise<PropertyDetail>;
+        })
+      );
+      setCompareProperties(details);
+    } catch {
+      toast('Failed to load property details for comparison', 'error');
+      setShowCompareModal(false);
+    } finally {
+      setIsLoadingCompare(false);
+    }
+  }
+
+  // ── Quick-add deal modal ──────────────────────────────────────────────────
+
+  function openQuickDealModal(property: Property) {
+    setQuickDealProperty(property);
+    setQuickDealTitle(`Deal - ${property.address}`);
+  }
+
+  async function handleQuickCreateDeal() {
+    if (!quickDealProperty) return;
+    setIsCreatingQuickDeal(true);
+    try {
+      const res = await fetch('/api/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyId: quickDealProperty.id,
+          title: quickDealTitle.trim() || quickDealProperty.address,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 409 && data.dealId) {
+          setDealCreatedFor((prev) => ({ ...prev, [quickDealProperty.id]: data.dealId }));
+          toast('A deal already exists for this property', 'info');
+        } else {
+          toast(data.error ?? 'Failed to create deal', 'error');
+        }
+        return;
+      }
+      setDealCreatedFor((prev) => ({ ...prev, [quickDealProperty.id]: data.id }));
+      toast('Deal created successfully', 'success');
+      setQuickDealProperty(null);
+    } catch {
+      toast('Network error — could not create deal', 'error');
+    } finally {
+      setIsCreatingQuickDeal(false);
+    }
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   const hasActiveFilters = Object.entries(filters).some(([k, v]) => {
@@ -333,6 +478,10 @@ export default function PropertiesPage() {
   });
 
   const staleCount = properties.filter((p) => p.isStale).length;
+  const stale90Count = properties.filter((p) => dataAgeDays(p.dataFreshnessDate) > STALE_THRESHOLD_DAYS).length;
+  const displayedProperties = showStaleOnly
+    ? properties.filter((p) => dataAgeDays(p.dataFreshnessDate) > STALE_THRESHOLD_DAYS)
+    : properties;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -621,6 +770,67 @@ export default function PropertiesPage() {
           </div>
         </div>
 
+        {/* ── Duplicates Alert ──────────────────────────────────────────── */}
+        {duplicateCount > 0 && showDuplicatesAlert && (
+          <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    {duplicateCount} potential duplicate {duplicateCount === 1 ? 'property' : 'properties'} found
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    {duplicateGroupCount} {duplicateGroupCount === 1 ? 'group' : 'groups'} of properties share the same normalized address.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDuplicatesAlert(false)}
+                className="rounded p-1 text-amber-500 hover:text-amber-700 hover:bg-amber-100 transition-colors"
+                title="Dismiss"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Stale Data Banner ───────────────────────────────────────────── */}
+        {!isLoading && stale90Count > 0 && (
+          <div className="mb-4 rounded-lg border border-orange-300 bg-orange-50 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-orange-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm font-semibold text-orange-800">
+                  {stale90Count} {stale90Count === 1 ? 'property has' : 'properties have'} data older than 90 days
+                </p>
+              </div>
+              {showStaleOnly ? (
+                <button
+                  onClick={() => setShowStaleOnly(false)}
+                  className="rounded-lg border border-orange-300 bg-white px-4 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100 transition-colors"
+                >
+                  Show All Properties
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowStaleOnly(true)}
+                  className="rounded-lg bg-orange-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-orange-700 transition-colors"
+                >
+                  Review Stale
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Error state ─────────────────────────────────────────────────── */}
         {error && !isLoading && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
@@ -645,7 +855,7 @@ export default function PropertiesPage() {
         )}
 
         {/* ── Empty state ─────────────────────────────────────────────────── */}
-        {!isLoading && !error && properties.length === 0 && (
+        {!isLoading && !error && properties.length === 0 && !showStaleOnly && (
           <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
             <p className="text-gray-500 font-medium">No properties found</p>
             {hasActiveFilters ? (
@@ -666,13 +876,23 @@ export default function PropertiesPage() {
           </div>
         )}
 
+        {/* ── Stale filter active indicator ──────────────────────────────── */}
+        {showStaleOnly && (
+          <div className="mb-4 text-sm text-orange-700 font-medium">
+            Showing {displayedProperties.length} stale {displayedProperties.length === 1 ? 'property' : 'properties'} (data older than 90 days)
+          </div>
+        )}
+
         {/* ── Properties table ────────────────────────────────────────────── */}
-        {properties.length > 0 && (
+        {displayedProperties.length > 0 && (
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-3 py-3 w-10">
+                      <span className="sr-only">Select</span>
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">City / State</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Est. Value</th>
@@ -684,12 +904,21 @@ export default function PropertiesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                  {properties.map((property) => {
+                  {displayedProperties.map((property) => {
                     const dealId = dealCreatedFor[property.id];
                     const isCreating = creatingDealFor === property.id;
 
                     return (
                       <tr key={property.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => window.location.href = `/properties/${property.id}`}>
+                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(property.id)}
+                            onChange={() => togglePropertySelection(property.id)}
+                            disabled={!selectedIds.has(property.id) && selectedIds.size >= 3}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <Link href={`/properties/${property.id}`} className="font-medium text-gray-900 leading-tight hover:text-blue-600">{property.address}</Link>
                           {property.ownershipName && (
@@ -730,30 +959,50 @@ export default function PropertiesPage() {
                             )}
                             <span
                               className={`text-xs font-medium ${
-                                property.isStale ? 'text-red-600' : 'text-gray-500'
+                                dataAgeDays(property.dataFreshnessDate) > STALE_THRESHOLD_DAYS
+                                  ? 'text-red-600'
+                                  : property.isStale
+                                  ? 'text-amber-600'
+                                  : 'text-gray-500'
                               }`}
+                              title={dataAgeDays(property.dataFreshnessDate) > STALE_THRESHOLD_DAYS ? dataAgeHuman(property.dataFreshnessDate) : undefined}
                             >
-                              {dataAgeText(property.dataFreshnessDate)}
+                              {dataAgeDays(property.dataFreshnessDate) > STALE_THRESHOLD_DAYS
+                                ? dataAgeHuman(property.dataFreshnessDate)
+                                : dataAgeText(property.dataFreshnessDate)}
                             </span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          {dealId ? (
-                            <Link
-                              href={`/deals/${dealId}`}
-                              className="inline-flex items-center rounded bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-800 hover:bg-green-200 transition-colors"
-                            >
-                              View Deal
-                            </Link>
-                          ) : (
-                            <button
-                              onClick={() => handleCreateDeal(property)}
-                              disabled={isCreating}
-                              className="inline-flex items-center rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              {isCreating ? 'Creating...' : 'Create Deal'}
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {dealId ? (
+                              <Link
+                                href={`/deals/${dealId}`}
+                                className="inline-flex items-center rounded bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-800 hover:bg-green-200 transition-colors"
+                              >
+                                View Deal
+                              </Link>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => openQuickDealModal(property)}
+                                  title="Create Deal"
+                                  className="inline-flex items-center justify-center rounded bg-blue-50 p-1.5 text-blue-600 hover:bg-blue-100 transition-colors"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleCreateDeal(property)}
+                                  disabled={isCreating}
+                                  className="inline-flex items-center rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isCreating ? 'Creating...' : 'Create Deal'}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -774,6 +1023,176 @@ export default function PropertiesPage() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Floating Compare Button ───────────────────────────────── */}
+        {selectedIds.size >= 2 && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40">
+            <button
+              onClick={handleCompare}
+              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Compare ({selectedIds.size})
+            </button>
+          </div>
+        )}
+
+        {/* ── Compare Modal ──────────────────────────────────────────── */}
+        {showCompareModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCompareModal(false)}>
+            <div className="relative w-full max-w-4xl max-h-[85vh] overflow-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 rounded-t-2xl">
+                <h2 className="text-lg font-bold text-gray-900">Property Comparison</h2>
+                <button
+                  onClick={() => setShowCompareModal(false)}
+                  className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-5">
+                {isLoadingCompare ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                    <span className="ml-3 text-gray-500">Loading property details...</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="text-left py-2 pr-4 text-xs font-semibold text-gray-500 uppercase tracking-wide w-40">Field</th>
+                        {compareProperties.map((p) => (
+                          <th key={p.id} className="text-left py-2 px-2 text-xs font-semibold text-gray-900 max-w-[200px]">
+                            <div className="truncate">{p.address}</div>
+                            <div className="text-[10px] text-gray-400 font-normal">{p.city}, {p.state}</div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {(() => {
+                        const rows: { label: string; getValue: (p: PropertyDetail) => string | number | null; bestFn: 'highest' | 'lowest' | 'none' }[] = [
+                          { label: 'Address', getValue: (p) => p.address, bestFn: 'none' },
+                          { label: 'City / State', getValue: (p) => `${p.city}, ${p.state}`, bestFn: 'none' },
+                          { label: 'Estimated Value', getValue: (p) => p.estimatedValue, bestFn: 'highest' },
+                          { label: 'Equity %', getValue: (p) => p.equityPercent, bestFn: 'highest' },
+                          { label: 'Beds', getValue: (p) => p.bedrooms, bestFn: 'highest' },
+                          { label: 'Baths', getValue: (p) => p.bathrooms, bestFn: 'highest' },
+                          { label: 'Sq Ft', getValue: (p) => p.squareFootage, bestFn: 'highest' },
+                          { label: 'Lot Size', getValue: (p) => p.lotSize, bestFn: 'highest' },
+                          { label: 'Year Built', getValue: (p) => p.yearBuilt, bestFn: 'highest' },
+                          { label: 'Days on Market', getValue: (p) => p.daysOnMarket, bestFn: 'lowest' },
+                          { label: 'Last Sale Price', getValue: (p) => p.lastSalePrice, bestFn: 'lowest' },
+                        ];
+
+                        function formatCompareValue(label: string, val: string | number | null): string {
+                          if (val == null) return '--';
+                          if (typeof val === 'string') return val;
+                          if (label === 'Estimated Value' || label === 'Last Sale Price') return formatCurrency(val);
+                          if (label === 'Equity %') return formatPercent(val);
+                          if (label === 'Sq Ft' || label === 'Lot Size') return val.toLocaleString();
+                          return String(val);
+                        }
+
+                        function findBestIndex(row: typeof rows[0]): number {
+                          if (row.bestFn === 'none') return -1;
+                          const values = compareProperties.map((p) => {
+                            const v = row.getValue(p);
+                            return typeof v === 'number' ? v : null;
+                          });
+                          const validValues = values.filter((v): v is number => v != null);
+                          if (validValues.length === 0) return -1;
+                          const target = row.bestFn === 'highest' ? Math.max(...validValues) : Math.min(...validValues);
+                          return values.indexOf(target);
+                        }
+
+                        return rows.map((row) => {
+                          const bestIdx = findBestIndex(row);
+                          return (
+                            <tr key={row.label}>
+                              <td className="py-2.5 pr-4 text-xs font-medium text-gray-500">{row.label}</td>
+                              {compareProperties.map((p, idx) => {
+                                const val = row.getValue(p);
+                                const isBest = idx === bestIdx;
+                                return (
+                                  <td
+                                    key={p.id}
+                                    className={`py-2.5 px-2 text-sm ${
+                                      isBest ? 'font-bold text-green-700 bg-green-50 rounded' : 'text-gray-900'
+                                    }`}
+                                  >
+                                    {formatCompareValue(row.label, val)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Quick-Add Deal Modal ───────────────────────────────────── */}
+        {quickDealProperty && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setQuickDealProperty(null)}>
+            <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                <h2 className="text-lg font-bold text-gray-900">Create Deal</h2>
+                <button
+                  onClick={() => setQuickDealProperty(null)}
+                  className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
+                    {quickDealProperty.address}, {quickDealProperty.city}, {quickDealProperty.state}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deal Title</label>
+                  <input
+                    type="text"
+                    value={quickDealTitle}
+                    onChange={(e) => setQuickDealTitle(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="Enter deal title..."
+                    onKeyDown={(e) => e.key === 'Enter' && handleQuickCreateDeal()}
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setQuickDealProperty(null)}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleQuickCreateDeal}
+                    disabled={isCreatingQuickDeal}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isCreatingQuickDeal ? 'Creating...' : 'Create'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
