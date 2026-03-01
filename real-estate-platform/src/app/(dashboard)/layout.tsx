@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
 import { useState, useEffect } from 'react';
 import { CommandPalette } from '@/components/ui/CommandPalette';
+import { NavigationProgress } from '@/components/ui/NavigationProgress';
 
 interface NavBadges {
   pipeline: number;
@@ -65,6 +66,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      <NavigationProgress />
       {/* Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-56 lg:fixed lg:inset-y-0 border-r border-gray-200 bg-white">
         {/* Logo */}
