@@ -156,6 +156,34 @@ function formatDateTime(value: string): string {
   });
 }
 
+function relativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffSecs = Math.floor(diffMs / 1000);
+  if (diffSecs < 60) return 'just now';
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return diffMins === 1 ? '1 minute ago' : `${diffMins} minutes ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
+}
+
+interface TimelineEntry {
+  id: string;
+  type: 'history' | 'note';
+  createdAt: string;
+  // history fields
+  fieldChanged?: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+  // note fields
+  noteText?: string;
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function DealDetailPage({
@@ -178,6 +206,10 @@ export default function DealDetailPage({
   const [notesDraft, setNotesDraft] = useState<string>('');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  // Timeline note input
+  const [newNoteText, setNewNoteText] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
 
   // Stage transition
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -409,6 +441,64 @@ export default function DealDetailPage({
     } finally {
       setIsSavingNotes(false);
     }
+  }
+
+  // ── Add note to timeline ────────────────────────────────────────────────────
+
+  async function handleAddNote() {
+    if (!deal || !newNoteText.trim()) return;
+    setIsAddingNote(true);
+    try {
+      const res = await fetch(`/api/deals/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: newNoteText.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to add note' }));
+        toast(err.error ?? 'Failed to add note', 'error');
+        return;
+      }
+      setNewNoteText('');
+      await fetchDeal();
+    } catch {
+      toast('Network error — could not add note', 'error');
+    } finally {
+      setIsAddingNote(false);
+    }
+  }
+
+  // ── Build timeline entries ─────────────────────────────────────────────────
+
+  function buildTimeline(): TimelineEntry[] {
+    if (!deal) return [];
+    const entries: TimelineEntry[] = [];
+
+    // Add history entries
+    for (const h of deal.history) {
+      entries.push({
+        id: h.id,
+        type: 'history',
+        createdAt: h.createdAt,
+        fieldChanged: h.fieldChanged,
+        oldValue: h.oldValue,
+        newValue: h.newValue,
+      });
+    }
+
+    // Add notes as a single entry if exists
+    if (deal.notes) {
+      entries.push({
+        id: 'notes-current',
+        type: 'note',
+        createdAt: deal.updatedAt,
+        noteText: deal.notes,
+      });
+    }
+
+    // Sort reverse chronological
+    entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return entries;
   }
 
   // ── Distress signals ─────────────────────────────────────────────────────────
@@ -868,89 +958,94 @@ export default function DealDetailPage({
             </div>
           </section>
 
-          {/* ── Section: Stage History ───────────────────────────────────── */}
+          {/* ── Section: Activity Timeline ─────────────────────────────── */}
           <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-gray-100 px-6 py-4">
-              <h2 className="text-base font-semibold text-gray-900">Stage History</h2>
+              <h2 className="text-base font-semibold text-gray-900">Activity Timeline</h2>
             </div>
             <div className="px-6 py-5">
-              {historyDesc.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">No history recorded yet.</p>
-              ) : (
-                <ol className="relative border-l border-gray-200 space-y-4 ml-3">
-                  {historyDesc.map((entry) => (
-                    <li key={entry.id} className="ml-4">
-                      <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-blue-500"></div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {entry.fieldChanged === 'status' ? (
+              {(() => {
+                const timeline = buildTimeline();
+                return timeline.length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">No activity recorded yet.</p>
+                ) : (
+                  <ol className="relative border-l border-gray-200 space-y-4 ml-3">
+                    {timeline.map((entry) => (
+                      <li key={entry.id} className="ml-6">
+                        {entry.type === 'note' ? (
                           <>
-                            Status:{' '}
-                            <span className="text-gray-500 line-through">{entry.oldValue ?? 'none'}</span>
-                            {' '}&rarr;{' '}
-                            <span className="font-semibold text-blue-700">{entry.newValue}</span>
+                            <div className="absolute -left-3.5 mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 ring-4 ring-white">
+                              <svg className="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Note</p>
+                              <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap">{entry.noteText}</p>
+                              <time className="text-xs text-gray-400" title={formatDateTime(entry.createdAt)}>
+                                {relativeTime(entry.createdAt)}
+                              </time>
+                            </div>
                           </>
                         ) : (
                           <>
-                            {entry.fieldChanged}:{' '}
-                            {entry.oldValue && (
-                              <span className="text-gray-500 line-through">{entry.oldValue}</span>
-                            )}
-                            {entry.oldValue && ' '}&rarr; <span className="text-gray-900">{entry.newValue}</span>
+                            <div className="absolute -left-3.5 mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 ring-4 ring-white">
+                              <svg className="h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {entry.fieldChanged === 'status' ? (
+                                  <>
+                                    Status:{' '}
+                                    <span className="text-gray-500 line-through">{entry.oldValue ?? 'none'}</span>
+                                    {' '}&rarr;{' '}
+                                    <span className="font-semibold text-blue-700">{entry.newValue}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    {entry.fieldChanged}:{' '}
+                                    {entry.oldValue && (
+                                      <span className="text-gray-500 line-through">{entry.oldValue}</span>
+                                    )}
+                                    {entry.oldValue && ' '}&rarr;{' '}
+                                    <span className="text-gray-900">{entry.newValue}</span>
+                                  </>
+                                )}
+                              </p>
+                              <time className="text-xs text-gray-400" title={formatDateTime(entry.createdAt)}>
+                                {relativeTime(entry.createdAt)}
+                              </time>
+                            </div>
                           </>
                         )}
-                      </p>
-                      <time className="text-xs text-gray-400">{formatDateTime(entry.createdAt)}</time>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-          </section>
+                      </li>
+                    ))}
+                  </ol>
+                );
+              })()}
 
-          {/* ── Section: Notes ───────────────────────────────────────────── */}
-          <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">Notes</h2>
-              {!isEditingNotes && (
-                <button
-                  onClick={() => setIsEditingNotes(true)}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  {deal.notes ? 'Edit' : 'Add Note'}
-                </button>
-              )}
-            </div>
-            <div className="px-6 py-5">
-              {isEditingNotes ? (
-                <div className="space-y-3">
-                  <textarea
-                    value={notesDraft}
-                    onChange={(e) => setNotesDraft(e.target.value)}
-                    rows={4}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    placeholder="Add notes about this deal..."
+              {/* Add Note input */}
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
+                    placeholder="Add a note..."
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleSaveNotes}
-                      disabled={isSavingNotes}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {isSavingNotes ? 'Saving...' : 'Save Notes'}
-                    </button>
-                    <button
-                      onClick={() => { setIsEditingNotes(false); setNotesDraft(deal.notes ?? ''); }}
-                      className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleAddNote}
+                    disabled={isAddingNote || !newNoteText.trim()}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isAddingNote ? 'Adding...' : 'Add Note'}
+                  </button>
                 </div>
-              ) : deal.notes ? (
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{deal.notes}</p>
-              ) : (
-                <p className="text-sm text-gray-400 italic">No notes yet. Click &quot;Add Note&quot; to add one.</p>
-              )}
+              </div>
             </div>
           </section>
 
