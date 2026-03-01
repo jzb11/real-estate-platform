@@ -111,9 +111,25 @@ export default function SequencesPage() {
       </div>
 
       {sequences.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <p className="text-lg font-medium">No sequences yet</p>
-          <p className="text-sm mt-1">Create your first follow-up sequence template.</p>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <svg className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 6v12" />
+            <circle cx="8" cy="6" r="1" fill="currentColor" />
+            <circle cx="8" cy="10" r="1" fill="currentColor" />
+            <circle cx="8" cy="14" r="1" fill="currentColor" />
+            <circle cx="8" cy="18" r="1" fill="currentColor" />
+          </svg>
+          <h3 className="text-lg font-semibold text-gray-900">No sequences yet</h3>
+          <p className="mt-2 max-w-sm text-sm text-gray-500">
+            Follow-up sequences let you automate multi-step email campaigns. Create a template to start nurturing your leads automatically.
+          </p>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="mt-5 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 transition-colors"
+          >
+            Create Your First Sequence
+          </button>
         </div>
       ) : (
         <div className="space-y-3">

@@ -157,7 +157,21 @@ export default function CompliancePage() {
             {tab === 'audit' && (
               <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                 {auditEntries.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">No contact attempts logged yet.</div>
+                  <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                    <svg className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-gray-900">No contact attempts logged</h3>
+                    <p className="mt-2 max-w-sm text-sm text-gray-500">
+                      Contact attempts are automatically recorded when you send offers or make calls. Every interaction is logged for TCPA compliance.
+                    </p>
+                    <a
+                      href="/offers"
+                      className="mt-5 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+                    >
+                      Send Your First Offer
+                    </a>
+                  </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -211,7 +225,21 @@ export default function CompliancePage() {
             {tab === 'consent' && (
               <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                 {consentRecords.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">No consent records on file.</div>
+                  <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                    <svg className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-gray-900">No consent records on file</h3>
+                    <p className="mt-2 max-w-sm text-sm text-gray-500">
+                      Consent records are created when contacts opt in to communications. These records prove compliance with TCPA regulations.
+                    </p>
+                    <a
+                      href="/kb"
+                      className="mt-5 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+                    >
+                      Learn About Consent Management
+                    </a>
+                  </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -293,7 +321,15 @@ export default function CompliancePage() {
                 {/* DNC list */}
                 <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                   {dncEntries.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">Do Not Call list is empty.</div>
+                    <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                      <svg className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      </svg>
+                      <h3 className="text-lg font-semibold text-gray-900">Do Not Call list is empty</h3>
+                      <p className="mt-2 max-w-sm text-sm text-gray-500">
+                        Numbers added here will be blocked from all outgoing communications. Use the form above to add a phone number to the DNC list.
+                      </p>
+                    </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200 text-sm">

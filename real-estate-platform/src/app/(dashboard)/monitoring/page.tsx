@@ -109,8 +109,23 @@ export default function MonitoringPage() {
   if (!metrics) {
     return (
       <div className="p-4">
-        <div className="bg-red-100 text-red-800 p-4 rounded-md">
-          Error loading monitoring metrics. Check your SendGrid configuration.
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Email Health</h1>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <svg className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <h3 className="text-lg font-semibold text-gray-900">No monitoring data yet</h3>
+          <p className="mt-2 max-w-sm text-sm text-gray-500">
+            Email health metrics will appear here once you start sending offers. Configure your SendGrid API key in settings to enable deliverability tracking.
+          </p>
+          <a
+            href="/settings"
+            className="mt-5 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+          >
+            Configure Email Settings
+          </a>
         </div>
       </div>
     );
